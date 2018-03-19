@@ -14,13 +14,27 @@
 
 <div id='map'></div>
 
+<aside class="sidebar">
+    <div class="layers">
+        <a href="#" class="states-layer">States</a>
+        <a href="#" class="alabama-layer">Alabama</a>
 
+    </div>
+    <div class="props">
+        <a href="#" class="alabama-density">Alabama Density</a>
+        <a href="#" class="alabama-population">Alabama Population</a>
+    </div>
+</aside>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
 <script src="mapboxgl-choropleth.js"></script>
 <script>
 
-let myChoropleth = new Choropleth();
+let myChoropleth = new Choropleth({
+    featureClickEventCallback(event) {
+        console.log(event);
+    }
+});
 
 </script>
 

@@ -2,20 +2,6 @@
 import config from '../config';
 import chroma from 'chroma-js';
 
-// function getColor(d) {
-//     return d > 1000 ? '#800026' :
-//            d > 500  ? '#BD0026' :
-//            d > 200  ? '#E31A1C' :
-//            d > 100  ? '#FC4E2A' :
-//            d > 50   ? '#FD8D3C' :
-//            d > 20   ? '#FEB24C' :
-//            d > 10   ? '#FED976' :
-//                       '#FFEDA0';
-// }
-
-
-
-
 
 ;(function( $, window, document, undefined ) {
     /**
@@ -38,6 +24,46 @@ import chroma from 'chroma-js';
             center: [-96, 37.8],
             zoom: 4
         }, // mapbox
+
+        /**
+         * Map configuration
+         */
+        mapConfig: {
+            layers: [
+                {
+                    id: "states-layer",
+                    source: {
+                        id: 'states',
+                        type: 'geojson',
+                        data: 'data/stateData.geojson'
+                    },
+                    scale: {
+                        colors: ['#FFEDA0','#BD0026'],
+                        step: [10, 20, 50, 100, 200, 500, 1000],
+                        property: 'density'
+                    }
+                },
+                {
+                    id: "alabama-layer",
+                    source: {
+                        id: 'alabama',
+                        type: 'geojson',
+                        data: 'data/alabama.geojson'
+                    },
+                    scale: {
+                        colors: ['blue', 'red'],
+                        step: [0, 500000, 1000000],
+                        property: 'population'
+                    }
+                }
+            ]
+        },
+
+        featureClickEventCallback(event) {
+            console.log('click event callback');
+            console.log(event.features);
+            console.log(event.features[0].properties.name);
+        }
     };
 
     /**
@@ -74,8 +100,9 @@ import chroma from 'chroma-js';
          * Init
          */
         init() {
-            console.log('init');
+            // console.log('init');
             this.instantiateMap();
+
         }, // init()
 
         /**
@@ -101,99 +128,111 @@ import chroma from 'chroma-js';
             // Resolve map load promise
             resolve();
 
-            // Add source for state polygons hosted on Mapbox, based on US Census Data:
-            // https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html
-            this.map.addSource('states', {
-                type: 'geojson',
-                data: 'data/stateData.geojson'
-            });
+            // Add map layers
+            this.addMapLayers();
+        },
 
+        afterMapLoaded(map) {
+            this.initFeatureClickEvent();
 
-            // map.addLayer({
-            //     "id": "states-join",
-            //     "type": "fill",
-            //     "source": "states",
-            //     "paint": {
-            //         "fill-color": [
-            //             'step',
-            //             ["get", "density"],
-            //             "#FFEDA0",
-            //             10, "#FFEDA0",
-            //             20, "#FED976",
-            //             50, "#FEB24C",
-            //             100, "#FD8D3C",
-            //             200, "#FC4E2A",
-            //             500, "#E31A1C"
-            //         ],
-            //         "fill-opacity": 0.8
-            //     }
-            // });
+            $('.sidebar .layers a').on('click', (e) => {
+                var clickedLayer = $(e.currentTarget).attr('class');
+                e.preventDefault();
+                e.stopPropagation();
 
-            // this.map.addLayer({
-            //     "id": "states-join",
-            //     "type": "fill",
-            //     "source": "states",
-            //     "paint": {
-            //         "fill-color": [
-            //             'interpolate',
-            //             ['linear'],
-            //             ['get', 'density'],
-            //             10, "#FFEDA0",
-            //             20, "#FED976",
-            //             50, "#FEB24C",
-            //             100, "#FD8D3C",
-            //             200, "#FC4E2A",
-            //             500, "#E31A1C",
-            //             1000, "#BD0026"
-            //         ],
-            //         "fill-opacity": 0.8
-            //     }
-            // });
+                console.log(clickedLayer);
 
-            let scaleStep = [10, 20, 50, 100, 200, 500, 1000];
+                var visibility = this.map.getLayoutProperty(clickedLayer, 'visibility');
 
-            function paintLayer() {
-
-                let fillColorArray = [
-                    'interpolate',
-                    ['linear'],
-                    ['get', 'density']
-                ];
-
-                chroma.scale(['#FFEDA0','#BD0026']).mode('lch').colors(scaleStep.length).map((color, index) => {
-                    fillColorArray.push(scaleStep[index])
-                    fillColorArray.push(color);
-                })
-
-                console.log(fillColorArray);
-
-                return {
-                    "fill-color": fillColorArray,
-                    "fill-opacity": 0.8
+                if (visibility === 'visible') {
+                    this.map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+                } else {
+                    this.map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
                 }
-            }
+            })
 
-            this.map.addLayer({
-                "id": "states-join",
-                "type": "fill",
-                "source": "states",
-                "paint": paintLayer()
-            });
+            $('.sidebar .props a').on('click', (e) => {
+                var clickedLayer = $(e.currentTarget).attr('class');
+                e.preventDefault();
+                e.stopPropagation();
 
+                // console.log(this.map.getSource('alabama'));
+                // console.log(this.map.getLayer('alabama-layer'));
+                this.map.setPaintProperty('alabama-layer', 'fill-color', [
+                    'step',
+                    ['get', 'density'],
+                    'white',
+                    50, 'blue',
+                    100, 'red'
+                ]);
+            })
+        },
 
-            this.map.on('click', 'states-join', function (e) {
-                console.log(e.features);
-                console.log(e.features[0].properties.name);
+        addMapLayers() {
+            this.options.mapConfig.layers.forEach((item, index) => {
+                // console.log(item);
+
+                // Add map source
+                this.map.addSource(item.source.id, {
+                    type: item.source.type,
+                    data: item.source.data
+                });
+
+                // Configure the paint layer
+                let paintLayer = () => {
+                    let fillColorArray = [
+                        'step',
+                        ['get', item.scale.property]
+                    ];
+
+                    let scaleStep = item.scale.step;
+
+                    chroma.scale(item.scale.colors).mode('lch').colors(scaleStep.length).map((color, index) => {
+                        if (index > 0) {
+                            fillColorArray.push(scaleStep[index])    
+                        }
+
+                        fillColorArray.push(color);
+                    })
+
+                    return {
+                        "fill-color": fillColorArray,
+                        "fill-opacity": 0.8
+                    }
+                }
+
+                console.log(paintLayer());
+
+                // Add layers to map
+                this.map.addLayer({
+                    "id": item.id,
+                    "type": "fill",
+                    "source": item.source.id,
+                    "paint": paintLayer(),
+                    'layout': {
+                        'visibility': 'none'
+                    }
+                });
             });
 
         },
 
-        afterMapLoaded(map) {
+        initFeatureClickEvent() {
+            this.map.on('click', 'states-join', this.featureClickEventHandler.bind(this));
+        },
+
+        featureClickEventHandler(event) {
+            this.options.featureClickEventCallback(event);
+        },
+
+        revealActiveLayer() {
 
         }
     }
 
-    console.log($.fn);
+    // console.log($.fn);
+
+
 
 
     /*------------------------------------*\

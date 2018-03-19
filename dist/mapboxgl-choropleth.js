@@ -2780,18 +2780,6 @@ var _chromaJs2 = _interopRequireDefault(_chromaJs);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// function getColor(d) {
-//     return d > 1000 ? '#800026' :
-//            d > 500  ? '#BD0026' :
-//            d > 200  ? '#E31A1C' :
-//            d > 100  ? '#FC4E2A' :
-//            d > 50   ? '#FD8D3C' :
-//            d > 20   ? '#FEB24C' :
-//            d > 10   ? '#FED976' :
-//                       '#FFEDA0';
-// }
-
-
 // import {$, jQuery} from 'jquery';
 ;(function ($, window, document, undefined) {
     /**
@@ -2813,7 +2801,44 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             style: 'mapbox://styles/aosika/cj8tmsx9cdk3m2rqmxbq8gr1b',
             center: [-96, 37.8],
             zoom: 4
-        } // mapbox
+        }, // mapbox
+
+        /**
+         * Map configuration
+         */
+        mapConfig: {
+            layers: [{
+                id: "states-layer",
+                source: {
+                    id: 'states',
+                    type: 'geojson',
+                    data: 'data/stateData.geojson'
+                },
+                scale: {
+                    colors: ['#FFEDA0', '#BD0026'],
+                    step: [10, 20, 50, 100, 200, 500, 1000],
+                    property: 'density'
+                }
+            }, {
+                id: "alabama-layer",
+                source: {
+                    id: 'alabama',
+                    type: 'geojson',
+                    data: 'data/alabama.geojson'
+                },
+                scale: {
+                    colors: ['blue', 'red'],
+                    step: [0, 500000, 1000000],
+                    property: 'population'
+                }
+            }]
+        },
+
+        featureClickEventCallback: function featureClickEventCallback(event) {
+            console.log('click event callback');
+            console.log(event.features);
+            console.log(event.features[0].properties.name);
+        }
     };
 
     /**
@@ -2848,7 +2873,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Init
          */
         init: function init() {
-            console.log('init');
+            // console.log('init');
             this.instantiateMap();
         },
         // init()
@@ -2879,89 +2904,97 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // Resolve map load promise
             resolve();
 
-            // Add source for state polygons hosted on Mapbox, based on US Census Data:
-            // https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html
-            this.map.addSource('states', {
-                type: 'geojson',
-                data: 'data/stateData.geojson'
+            // Add map layers
+            this.addMapLayers();
+        },
+        afterMapLoaded: function afterMapLoaded(map) {
+            var _this2 = this;
+
+            this.initFeatureClickEvent();
+
+            $('.sidebar .layers a').on('click', function (e) {
+                var clickedLayer = $(e.currentTarget).attr('class');
+                e.preventDefault();
+                e.stopPropagation();
+
+                console.log(clickedLayer);
+
+                var visibility = _this2.map.getLayoutProperty(clickedLayer, 'visibility');
+
+                if (visibility === 'visible') {
+                    _this2.map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+                } else {
+                    _this2.map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+                }
             });
 
-            // map.addLayer({
-            //     "id": "states-join",
-            //     "type": "fill",
-            //     "source": "states",
-            //     "paint": {
-            //         "fill-color": [
-            //             'step',
-            //             ["get", "density"],
-            //             "#FFEDA0",
-            //             10, "#FFEDA0",
-            //             20, "#FED976",
-            //             50, "#FEB24C",
-            //             100, "#FD8D3C",
-            //             200, "#FC4E2A",
-            //             500, "#E31A1C"
-            //         ],
-            //         "fill-opacity": 0.8
-            //     }
-            // });
+            $('.sidebar .props a').on('click', function (e) {
+                var clickedLayer = $(e.currentTarget).attr('class');
+                e.preventDefault();
+                e.stopPropagation();
 
-            // this.map.addLayer({
-            //     "id": "states-join",
-            //     "type": "fill",
-            //     "source": "states",
-            //     "paint": {
-            //         "fill-color": [
-            //             'interpolate',
-            //             ['linear'],
-            //             ['get', 'density'],
-            //             10, "#FFEDA0",
-            //             20, "#FED976",
-            //             50, "#FEB24C",
-            //             100, "#FD8D3C",
-            //             200, "#FC4E2A",
-            //             500, "#E31A1C",
-            //             1000, "#BD0026"
-            //         ],
-            //         "fill-opacity": 0.8
-            //     }
-            // });
-
-            var scaleStep = [10, 20, 50, 100, 200, 500, 1000];
-
-            function paintLayer() {
-
-                var fillColorArray = ['interpolate', ['linear'], ['get', 'density']];
-
-                _chromaJs2.default.scale(['#FFEDA0', '#BD0026']).mode('lch').colors(scaleStep.length).map(function (color, index) {
-                    fillColorArray.push(scaleStep[index]);
-                    fillColorArray.push(color);
-                });
-
-                console.log(fillColorArray);
-
-                return {
-                    "fill-color": fillColorArray,
-                    "fill-opacity": 0.8
-                };
-            }
-
-            this.map.addLayer({
-                "id": "states-join",
-                "type": "fill",
-                "source": "states",
-                "paint": paintLayer()
-            });
-
-            this.map.on('click', 'states-join', function (e) {
-                console.log(e.features);
-                console.log(e.features[0].properties.name);
+                // console.log(this.map.getSource('alabama'));
+                // console.log(this.map.getLayer('alabama-layer'));
+                _this2.map.setPaintProperty('alabama-layer', 'fill-color', ['step', ['get', 'density'], 'white', 50, 'blue', 100, 'red']);
             });
         },
-        afterMapLoaded: function afterMapLoaded(map) {}
+        addMapLayers: function addMapLayers() {
+            var _this3 = this;
+
+            this.options.mapConfig.layers.forEach(function (item, index) {
+                // console.log(item);
+
+                // Add map source
+                _this3.map.addSource(item.source.id, {
+                    type: item.source.type,
+                    data: item.source.data
+                });
+
+                // Configure the paint layer
+                var paintLayer = function paintLayer() {
+                    var fillColorArray = ['step', ['get', item.scale.property]];
+
+                    var scaleStep = item.scale.step;
+
+                    _chromaJs2.default.scale(item.scale.colors).mode('lch').colors(scaleStep.length).map(function (color, index) {
+                        if (index > 0) {
+                            fillColorArray.push(scaleStep[index]);
+                        }
+
+                        fillColorArray.push(color);
+                    });
+
+                    return {
+                        "fill-color": fillColorArray,
+                        "fill-opacity": 0.8
+                    };
+                };
+
+                console.log(paintLayer());
+
+                // Add layers to map
+                _this3.map.addLayer({
+                    "id": item.id,
+                    "type": "fill",
+                    "source": item.source.id,
+                    "paint": paintLayer(),
+                    'layout': {
+                        'visibility': 'none'
+                    }
+                });
+            });
+        },
+        initFeatureClickEvent: function initFeatureClickEvent() {
+            this.map.on('click', 'states-join', this.featureClickEventHandler.bind(this));
+        },
+        featureClickEventHandler: function featureClickEventHandler(event) {
+            this.options.featureClickEventCallback(event);
+        },
+        revealActiveLayer: function revealActiveLayer() {}
     };
 
-    console.log($.fn);
+    // console.log($.fn);
+
 
     /*------------------------------------*\
       Export 
