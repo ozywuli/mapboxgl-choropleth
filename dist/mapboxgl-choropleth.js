@@ -2806,33 +2806,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         /**
          * Map configuration
          */
-        mapConfig: {
-            layers: [{
-                id: "states-layer",
-                source: {
-                    id: 'states',
-                    type: 'geojson',
-                    data: 'data/stateData.geojson'
-                },
-                scale: {
-                    colors: ['#FFEDA0', '#BD0026'],
-                    step: [10, 20, 50, 100, 200, 500, 1000],
-                    property: 'density'
-                }
-            }, {
-                id: "alabama-layer",
-                source: {
-                    id: 'alabama',
-                    type: 'geojson',
-                    data: 'data/alabama.geojson'
-                },
-                scale: {
-                    colors: ['blue', 'red'],
-                    step: [0, 500000, 1000000],
-                    property: 'population'
-                }
-            }]
-        },
+        mapConfig: {},
 
         featureClickEventCallback: function featureClickEventCallback(event) {
             console.log('click event callback');
@@ -2868,6 +2842,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
           STATE
         \*------------------------------------*/
         map: null,
+        activeLayer: null,
+        customLayers: [],
 
         /**
          * Init
@@ -2900,6 +2876,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         },
         // instantiateMap()
 
+        /**
+         * 
+         */
         mapLoaded: function mapLoaded(resolve) {
             // Resolve map load promise
             resolve();
@@ -2907,90 +2886,166 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // Add map layers
             this.addMapLayers();
         },
+
+
+        /**
+         * 
+         */
         afterMapLoaded: function afterMapLoaded(map) {
+            this.initFeatureClickEvent();
+            this.initRevealActivelayerEvent();
+            this.initSetPropEvent();
+        },
+
+
+        /**
+         * 
+         */
+        addMapLayers: function addMapLayers() {
             var _this2 = this;
 
-            this.initFeatureClickEvent();
-
-            $('.sidebar .layers a').on('click', function (e) {
-                var clickedLayer = $(e.currentTarget).attr('class');
-                e.preventDefault();
-                e.stopPropagation();
-
-                console.log(clickedLayer);
-
-                var visibility = _this2.map.getLayoutProperty(clickedLayer, 'visibility');
-
-                if (visibility === 'visible') {
-                    _this2.map.setLayoutProperty(clickedLayer, 'visibility', 'none');
-                } else {
-                    _this2.map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
-                }
-            });
-
-            $('.sidebar .props a').on('click', function (e) {
-                var clickedLayer = $(e.currentTarget).attr('class');
-                e.preventDefault();
-                e.stopPropagation();
-
-                // console.log(this.map.getSource('alabama'));
-                // console.log(this.map.getLayer('alabama-layer'));
-                _this2.map.setPaintProperty('alabama-layer', 'fill-color', ['step', ['get', 'density'], 'white', 50, 'blue', 100, 'red']);
-            });
-        },
-        addMapLayers: function addMapLayers() {
-            var _this3 = this;
-
-            this.options.mapConfig.layers.forEach(function (item, index) {
-                // console.log(item);
-
+            this.options.mapConfig.layers.forEach(function (layer, index) {
                 // Add map source
-                _this3.map.addSource(item.source.id, {
-                    type: item.source.type,
-                    data: item.source.data
+                _this2.map.addSource(layer.source.id, {
+                    type: layer.source.type,
+                    data: layer.source.data
                 });
 
-                // Configure the paint layer
-                var paintLayer = function paintLayer() {
-                    var fillColorArray = ['step', ['get', item.scale.property]];
+                var layerVisibility = 'visible';
 
-                    var scaleStep = item.scale.step;
-
-                    _chromaJs2.default.scale(item.scale.colors).mode('lch').colors(scaleStep.length).map(function (color, index) {
-                        if (index > 0) {
-                            fillColorArray.push(scaleStep[index]);
-                        }
-
-                        fillColorArray.push(color);
-                    });
-
-                    return {
-                        "fill-color": fillColorArray,
-                        "fill-opacity": 0.8
-                    };
-                };
-
-                console.log(paintLayer());
+                if (index > 0) {
+                    layerVisibility = 'none';
+                }
 
                 // Add layers to map
-                _this3.map.addLayer({
-                    "id": item.id,
+                _this2.map.addLayer({
+                    "id": layer.id,
                     "type": "fill",
-                    "source": item.source.id,
-                    "paint": paintLayer(),
+                    "source": layer.source.id,
+                    "paint": {
+                        "fill-color": _this2.paintFill(layer.properties[0]),
+                        "fill-opacity": 0.8
+                    },
                     'layout': {
-                        'visibility': 'none'
+                        'visibility': layerVisibility
                     }
                 });
+
+                _this2.customLayers.push(layer.id);
             });
         },
-        initFeatureClickEvent: function initFeatureClickEvent() {
-            this.map.on('click', 'states-join', this.featureClickEventHandler.bind(this));
+
+
+        /**
+         * 
+         */
+        paintFill: function paintFill(prop) {
+            var fillColorArray = ['step', ['get', prop.property]];
+
+            var scaleStep = prop.step;
+
+            _chromaJs2.default.scale(prop.colors).mode('lch').colors(scaleStep.length).map(function (color, index) {
+                if (index > 0) {
+                    fillColorArray.push(scaleStep[index]);
+                }
+
+                fillColorArray.push(color);
+            });
+
+            return fillColorArray;
         },
+
+
+        /**
+         * 
+         */
+        initFeatureClickEvent: function initFeatureClickEvent() {
+            var _this3 = this;
+
+            // Add click event to each custom layer
+            this.customLayers.forEach(function (layer) {
+                _this3.map.on('click', layer, _this3.featureClickEventHandler.bind(_this3));
+            });
+        },
+
+
+        /**
+         * 
+         */
         featureClickEventHandler: function featureClickEventHandler(event) {
             this.options.featureClickEventCallback(event);
         },
-        revealActiveLayer: function revealActiveLayer() {}
+
+
+        /**
+         * Click event for layer reveals/hide
+         */
+        initRevealActivelayerEvent: function initRevealActivelayerEvent() {
+            $('.js-choropleth-layer-anchor').on('click', this.revealActiveLayerHandler.bind(this));
+        },
+
+
+        /**
+         * Handles the anchor event for showing/revealing layers
+         */
+        revealActiveLayerHandler: function revealActiveLayerHandler(event) {
+            var _this4 = this;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Get name of clicked layer from anchor
+            var clickedLayer = $(event.currentTarget).attr('data-layer');
+            this.activeLayer = clickedLayer;
+
+            // Hide unclicked layers
+            this.customLayers.forEach(function (layer) {
+                if (layer !== clickedLayer) {
+                    _this4.map.setLayoutProperty(layer, 'visibility', 'none');
+                }
+            });
+
+            // Double check visibility of layer
+            var visibility = this.map.getLayoutProperty(clickedLayer, 'visibility');
+
+            // Hide layer if it wasn't visible before, otherwise reveal it
+            if (visibility === 'visible') {
+                this.map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+            } else {
+                this.map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+            }
+        },
+
+
+        /**
+         * 
+         */
+        initSetPropEvent: function initSetPropEvent() {
+            $('.js-choropleth-prop-anchor').on('click', this.setPropEventHandler.bind(this));
+        },
+
+
+        /**
+         * 
+         */
+        setPropEventHandler: function setPropEventHandler(event) {
+            var _this5 = this;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            var clickedProp = $(event.currentTarget).attr('data-prop');
+
+            this.options.mapConfig.layers.map(function (layer) {
+                if (_this5.activeLayer === layer.id) {
+                    layer.properties.map(function (prop) {
+                        if (prop.property === clickedProp) {
+                            _this5.map.setPaintProperty(_this5.activeLayer, 'fill-color', _this5.paintFill(prop));
+                        }
+                    });
+                }
+            });
+        }
     };
 
     // console.log($.fn);

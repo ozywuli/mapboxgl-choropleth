@@ -29,34 +29,7 @@ import chroma from 'chroma-js';
          * Map configuration
          */
         mapConfig: {
-            layers: [
-                {
-                    id: "states-layer",
-                    source: {
-                        id: 'states',
-                        type: 'geojson',
-                        data: 'data/stateData.geojson'
-                    },
-                    scale: {
-                        colors: ['#FFEDA0','#BD0026'],
-                        step: [10, 20, 50, 100, 200, 500, 1000],
-                        property: 'density'
-                    }
-                },
-                {
-                    id: "alabama-layer",
-                    source: {
-                        id: 'alabama',
-                        type: 'geojson',
-                        data: 'data/alabama.geojson'
-                    },
-                    scale: {
-                        colors: ['blue', 'red'],
-                        step: [0, 500000, 1000000],
-                        property: 'population'
-                    }
-                }
-            ]
+
         },
 
         featureClickEventCallback(event) {
@@ -95,6 +68,8 @@ import chroma from 'chroma-js';
           STATE
         \*------------------------------------*/
         map: null,
+        activeLayer: null,
+        customLayers: [],
 
         /**
          * Init
@@ -124,6 +99,9 @@ import chroma from 'chroma-js';
             }).then(this.afterMapLoaded.bind(this, this.map));
         }, // instantiateMap()
 
+        /**
+         * 
+         */
         mapLoaded(resolve) {
             // Resolve map load promise
             resolve();
@@ -132,101 +110,155 @@ import chroma from 'chroma-js';
             this.addMapLayers();
         },
 
+        /**
+         * 
+         */
         afterMapLoaded(map) {
             this.initFeatureClickEvent();
-
-            $('.sidebar .layers a').on('click', (e) => {
-                var clickedLayer = $(e.currentTarget).attr('class');
-                e.preventDefault();
-                e.stopPropagation();
-
-                console.log(clickedLayer);
-
-                var visibility = this.map.getLayoutProperty(clickedLayer, 'visibility');
-
-                if (visibility === 'visible') {
-                    this.map.setLayoutProperty(clickedLayer, 'visibility', 'none');
-                } else {
-                    this.map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
-                }
-            })
-
-            $('.sidebar .props a').on('click', (e) => {
-                var clickedLayer = $(e.currentTarget).attr('class');
-                e.preventDefault();
-                e.stopPropagation();
-
-                // console.log(this.map.getSource('alabama'));
-                // console.log(this.map.getLayer('alabama-layer'));
-                this.map.setPaintProperty('alabama-layer', 'fill-color', [
-                    'step',
-                    ['get', 'density'],
-                    'white',
-                    50, 'blue',
-                    100, 'red'
-                ]);
-            })
+            this.initRevealActivelayerEvent();
+            this.initSetPropEvent();
         },
 
+        /**
+         * 
+         */
         addMapLayers() {
-            this.options.mapConfig.layers.forEach((item, index) => {
-                // console.log(item);
-
+            this.options.mapConfig.layers.forEach((layer, index) => {
                 // Add map source
-                this.map.addSource(item.source.id, {
-                    type: item.source.type,
-                    data: item.source.data
+                this.map.addSource(layer.source.id, {
+                    type: layer.source.type,
+                    data: layer.source.data
                 });
 
-                // Configure the paint layer
-                let paintLayer = () => {
-                    let fillColorArray = [
-                        'step',
-                        ['get', item.scale.property]
-                    ];
+                let layerVisibility = 'visible';
 
-                    let scaleStep = item.scale.step;
 
-                    chroma.scale(item.scale.colors).mode('lch').colors(scaleStep.length).map((color, index) => {
-                        if (index > 0) {
-                            fillColorArray.push(scaleStep[index])    
-                        }
-
-                        fillColorArray.push(color);
-                    })
-
-                    return {
-                        "fill-color": fillColorArray,
-                        "fill-opacity": 0.8
-                    }
+                if (index > 0) {
+                    layerVisibility = 'none';
                 }
-
-                console.log(paintLayer());
 
                 // Add layers to map
                 this.map.addLayer({
-                    "id": item.id,
+                    "id": layer.id,
                     "type": "fill",
-                    "source": item.source.id,
-                    "paint": paintLayer(),
+                    "source": layer.source.id,
+                    "paint": {
+                        "fill-color": this.paintFill(layer.properties[0]),
+                        "fill-opacity": 0.8
+                    },
                     'layout': {
-                        'visibility': 'none'
+                        'visibility': layerVisibility
                     }
                 });
+
+                this.customLayers.push(layer.id);
             });
 
         },
 
-        initFeatureClickEvent() {
-            this.map.on('click', 'states-join', this.featureClickEventHandler.bind(this));
+        /**
+         * 
+         */
+        paintFill(prop) {
+            let fillColorArray = [
+                'step',
+                ['get', prop.property]
+            ];
+
+            let scaleStep = prop.step;
+
+            chroma.scale(prop.colors).mode('lch').colors(scaleStep.length).map((color, index) => {
+                if (index > 0) {
+                    fillColorArray.push(scaleStep[index])    
+                }
+
+                fillColorArray.push(color);
+            })
+
+            return fillColorArray;
         },
 
+        /**
+         * 
+         */
+        initFeatureClickEvent() {
+            // Add click event to each custom layer
+            this.customLayers.forEach((layer) => {
+                this.map.on('click', layer, this.featureClickEventHandler.bind(this));
+            });
+        },
+
+        /**
+         * 
+         */
         featureClickEventHandler(event) {
             this.options.featureClickEventCallback(event);
         },
 
-        revealActiveLayer() {
 
+        /**
+         * Click event for layer reveals/hide
+         */
+        initRevealActivelayerEvent() {
+            $('.js-choropleth-layer-anchor').on('click', this.revealActiveLayerHandler.bind(this))
+        },
+
+        /**
+         * Handles the anchor event for showing/revealing layers
+         */
+        revealActiveLayerHandler(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Get name of clicked layer from anchor
+            let clickedLayer = $(event.currentTarget).attr('data-layer');
+            this.activeLayer = clickedLayer;
+
+            // Hide unclicked layers
+            this.customLayers.forEach((layer) => {
+                if (layer !== clickedLayer) {
+                    this.map.setLayoutProperty(layer, 'visibility', 'none')
+                }
+            })
+
+            // Double check visibility of layer
+            let visibility = this.map.getLayoutProperty(clickedLayer, 'visibility');
+
+            // Hide layer if it wasn't visible before, otherwise reveal it
+            if (visibility === 'visible') {
+                this.map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+            } else {
+                this.map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+            }
+
+
+        },
+
+        /**
+         * 
+         */
+        initSetPropEvent() {
+            $('.js-choropleth-prop-anchor').on('click', this.setPropEventHandler.bind(this));
+        },
+
+        /**
+         * 
+         */
+        setPropEventHandler(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            let clickedProp = $(event.currentTarget).attr('data-prop');
+
+            this.options.mapConfig.layers.map((layer) => {
+                if (this.activeLayer === layer.id) {
+                    layer.properties.map((prop) => {
+                        if (prop.property === clickedProp) {
+                            this.map.setPaintProperty(this.activeLayer, 'fill-color', this.paintFill(prop));
+                        }
+                    });
+                }
+            })
         }
     }
 
