@@ -20,9 +20,9 @@ import chroma from 'chroma-js';
          */
         mapboxConfig: {
             container: 'map',
-            style: 'mapbox://styles/aosika/cj8tmsx9cdk3m2rqmxbq8gr1b',
-            center: [-96, 37.8],
-            zoom: 4
+            style: 'mapbox://styles/aosika/cjbepjvcn94182rmrjfnpudra',
+            center: [0, 0],
+            zoom: 1
         }, // mapbox
 
         /**
@@ -33,9 +33,7 @@ import chroma from 'chroma-js';
         },
 
         featureClickEventCallback(event) {
-            console.log('click event callback');
-            console.log(event.features);
-            console.log(event.features[0].properties.name);
+
         }
     };
 
@@ -116,26 +114,29 @@ import chroma from 'chroma-js';
         afterMapLoaded(map) {
             this.initFeatureClickEvent();
             this.initRevealActivelayerEvent();
-            this.initSetPropEvent();
+            this.initPropEvent();
+            this.hoverEvent();
         },
 
         /**
          * 
          */
         addMapLayers() {
+            var layers = this.map.getStyle().layers;
+            // Find the index of the first symbol layer in the map style
+            var firstSymbolId;
+            for (var i = 0; i < layers.length; i++) {
+                if (layers[i].type === 'symbol') {
+                    firstSymbolId = layers[i].id;
+                    break;
+                }
+            }
             this.options.mapConfig.layers.forEach((layer, index) => {
                 // Add map source
                 this.map.addSource(layer.source.id, {
                     type: layer.source.type,
                     data: layer.source.data
                 });
-
-                let layerVisibility = 'visible';
-
-
-                if (index > 0) {
-                    layerVisibility = 'none';
-                }
 
                 // Add layers to map
                 this.map.addLayer({
@@ -147,12 +148,24 @@ import chroma from 'chroma-js';
                         "fill-opacity": 0.8
                     },
                     'layout': {
-                        'visibility': layerVisibility
+                        'visibility': 'none'
                     }
-                });
+                }, firstSymbolId);
 
+                // this.map.setFilter('countries-layer', ['match', ['get', 'name'], ['Panama', 'Angola'], true, false]);
+
+                this.map.setFilter('countries-layer', ['has', 'density']);
+
+
+                // Show the first layer
+                if (index === 0) {
+                    this.revealActiveLayer(layer.id);
+                }
+
+                // Store all the custom layers
                 this.customLayers.push(layer.id);
             });
+
 
         },
 
@@ -195,56 +208,77 @@ import chroma from 'chroma-js';
             this.options.featureClickEventCallback(event);
         },
 
-
         /**
          * Click event for layer reveals/hide
          */
         initRevealActivelayerEvent() {
-            $('.js-choropleth-layer-anchor').on('click', this.revealActiveLayerHandler.bind(this))
+            $('.js-choropleth-layer-anchor').on('click', this.revealActiveLayerEventHandler.bind(this))
         },
 
         /**
          * Handles the anchor event for showing/revealing layers
          */
-        revealActiveLayerHandler(event) {
+        revealActiveLayerEventHandler(event) {
             event.preventDefault();
             event.stopPropagation();
 
             // Get name of clicked layer from anchor
             let clickedLayer = $(event.currentTarget).attr('data-layer');
-            this.activeLayer = clickedLayer;
+
+            this.revealActiveLayer(clickedLayer);
+        },
+
+        /**
+         * 
+         */
+        revealActiveLayer(activeLayer) {
+            this.activeLayer = activeLayer;
 
             // Hide unclicked layers
             this.customLayers.forEach((layer) => {
-                if (layer !== clickedLayer) {
+                if (layer !== activeLayer) {
                     this.map.setLayoutProperty(layer, 'visibility', 'none')
                 }
             })
 
             // Double check visibility of layer
-            let visibility = this.map.getLayoutProperty(clickedLayer, 'visibility');
+            let visibility = this.map.getLayoutProperty(activeLayer, 'visibility');
 
             // Hide layer if it wasn't visible before, otherwise reveal it
             if (visibility === 'visible') {
-                this.map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+                this.map.setLayoutProperty(activeLayer, 'visibility', 'none');
             } else {
-                this.map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+                this.map.setLayoutProperty(activeLayer, 'visibility', 'visible');
             }
+        },
 
 
+        /**
+         * 
+         */
+        hoverEvent(activeLayer) {
+            this.customLayers.forEach((layer) => {
+                this.map.on('mouseenter', layer, (event) => {
+                    this.map.getCanvas().style.cursor = 'pointer';
+                })
+                this.map.on('mouseleave', layer, (event) => {
+                    this.map.getCanvas().style.cursor = '';
+                });
+            })
+        },
+
+
+        /**
+         * 
+         */
+        initPropEvent() {
+            $('.js-choropleth-prop-anchor').on('click', this.propEventHandler.bind(this));
         },
 
         /**
          * 
          */
-        initSetPropEvent() {
-            $('.js-choropleth-prop-anchor').on('click', this.setPropEventHandler.bind(this));
-        },
-
-        /**
-         * 
-         */
-        setPropEventHandler(event) {
+        propEventHandler(event) {
             event.preventDefault();
             event.stopPropagation();
 

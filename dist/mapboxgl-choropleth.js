@@ -2798,9 +2798,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          */
         mapboxConfig: {
             container: 'map',
-            style: 'mapbox://styles/aosika/cj8tmsx9cdk3m2rqmxbq8gr1b',
-            center: [-96, 37.8],
-            zoom: 4
+            style: 'mapbox://styles/aosika/cjbepjvcn94182rmrjfnpudra',
+            center: [0, 0],
+            zoom: 1
         }, // mapbox
 
         /**
@@ -2808,11 +2808,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          */
         mapConfig: {},
 
-        featureClickEventCallback: function featureClickEventCallback(event) {
-            console.log('click event callback');
-            console.log(event.features);
-            console.log(event.features[0].properties.name);
-        }
+        featureClickEventCallback: function featureClickEventCallback(event) {}
     };
 
     /**
@@ -2894,7 +2890,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         afterMapLoaded: function afterMapLoaded(map) {
             this.initFeatureClickEvent();
             this.initRevealActivelayerEvent();
-            this.initSetPropEvent();
+            this.initPropEvent();
+            this.hoverEvent();
         },
 
 
@@ -2904,18 +2901,21 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         addMapLayers: function addMapLayers() {
             var _this2 = this;
 
+            var layers = this.map.getStyle().layers;
+            // Find the index of the first symbol layer in the map style
+            var firstSymbolId;
+            for (var i = 0; i < layers.length; i++) {
+                if (layers[i].type === 'symbol') {
+                    firstSymbolId = layers[i].id;
+                    break;
+                }
+            }
             this.options.mapConfig.layers.forEach(function (layer, index) {
                 // Add map source
                 _this2.map.addSource(layer.source.id, {
                     type: layer.source.type,
                     data: layer.source.data
                 });
-
-                var layerVisibility = 'visible';
-
-                if (index > 0) {
-                    layerVisibility = 'none';
-                }
 
                 // Add layers to map
                 _this2.map.addLayer({
@@ -2927,10 +2927,20 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                         "fill-opacity": 0.8
                     },
                     'layout': {
-                        'visibility': layerVisibility
+                        'visibility': 'none'
                     }
-                });
+                }, firstSymbolId);
 
+                // this.map.setFilter('countries-layer', ['match', ['get', 'name'], ['Panama', 'Angola'], true, false]);
+
+                _this2.map.setFilter('countries-layer', ['has', 'density']);
+
+                // Show the first layer
+                if (index === 0) {
+                    _this2.revealActiveLayer(layer.id);
+                }
+
+                // Store all the custom layers
                 _this2.customLayers.push(layer.id);
             });
         },
@@ -2981,38 +2991,47 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Click event for layer reveals/hide
          */
         initRevealActivelayerEvent: function initRevealActivelayerEvent() {
-            $('.js-choropleth-layer-anchor').on('click', this.revealActiveLayerHandler.bind(this));
+            $('.js-choropleth-layer-anchor').on('click', this.revealActiveLayerEventHandler.bind(this));
         },
 
 
         /**
          * Handles the anchor event for showing/revealing layers
          */
-        revealActiveLayerHandler: function revealActiveLayerHandler(event) {
-            var _this4 = this;
-
+        revealActiveLayerEventHandler: function revealActiveLayerEventHandler(event) {
             event.preventDefault();
             event.stopPropagation();
 
             // Get name of clicked layer from anchor
             var clickedLayer = $(event.currentTarget).attr('data-layer');
-            this.activeLayer = clickedLayer;
+
+            this.revealActiveLayer(clickedLayer);
+        },
+
+
+        /**
+         * 
+         */
+        revealActiveLayer: function revealActiveLayer(activeLayer) {
+            var _this4 = this;
+
+            this.activeLayer = activeLayer;
 
             // Hide unclicked layers
             this.customLayers.forEach(function (layer) {
-                if (layer !== clickedLayer) {
+                if (layer !== activeLayer) {
                     _this4.map.setLayoutProperty(layer, 'visibility', 'none');
                 }
             });
 
             // Double check visibility of layer
-            var visibility = this.map.getLayoutProperty(clickedLayer, 'visibility');
+            var visibility = this.map.getLayoutProperty(activeLayer, 'visibility');
 
             // Hide layer if it wasn't visible before, otherwise reveal it
             if (visibility === 'visible') {
-                this.map.setLayoutProperty(clickedLayer, 'visibility', 'none');
+                this.map.setLayoutProperty(activeLayer, 'visibility', 'none');
             } else {
-                this.map.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+                this.map.setLayoutProperty(activeLayer, 'visibility', 'visible');
             }
         },
 
@@ -3020,16 +3039,33 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         /**
          * 
          */
-        initSetPropEvent: function initSetPropEvent() {
-            $('.js-choropleth-prop-anchor').on('click', this.setPropEventHandler.bind(this));
+        hoverEvent: function hoverEvent(activeLayer) {
+            var _this5 = this;
+
+            this.customLayers.forEach(function (layer) {
+                _this5.map.on('mouseenter', layer, function (event) {
+                    _this5.map.getCanvas().style.cursor = 'pointer';
+                });
+                _this5.map.on('mouseleave', layer, function (event) {
+                    _this5.map.getCanvas().style.cursor = '';
+                });
+            });
         },
 
 
         /**
          * 
          */
-        setPropEventHandler: function setPropEventHandler(event) {
-            var _this5 = this;
+        initPropEvent: function initPropEvent() {
+            $('.js-choropleth-prop-anchor').on('click', this.propEventHandler.bind(this));
+        },
+
+
+        /**
+         * 
+         */
+        propEventHandler: function propEventHandler(event) {
+            var _this6 = this;
 
             event.preventDefault();
             event.stopPropagation();
@@ -3037,10 +3073,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             var clickedProp = $(event.currentTarget).attr('data-prop');
 
             this.options.mapConfig.layers.map(function (layer) {
-                if (_this5.activeLayer === layer.id) {
+                if (_this6.activeLayer === layer.id) {
                     layer.properties.map(function (prop) {
                         if (prop.property === clickedProp) {
-                            _this5.map.setPaintProperty(_this5.activeLayer, 'fill-color', _this5.paintFill(prop));
+                            _this6.map.setPaintProperty(_this6.activeLayer, 'fill-color', _this6.paintFill(prop));
                         }
                     });
                 }
