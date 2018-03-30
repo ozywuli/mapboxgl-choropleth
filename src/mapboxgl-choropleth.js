@@ -29,7 +29,7 @@ import chroma from 'chroma-js';
          * Map configuration
          */
         mapConfig: {
-
+            legendReverse: true
         },
 
         featureClickEventCallback(event) {
@@ -67,7 +67,11 @@ import chroma from 'chroma-js';
         \*------------------------------------*/
         map: null,
         activeLayer: null,
+        activeLayerPropName: null,
+        activeLayerProps: null,
         customLayers: [],
+        $mapContainer: $('.mapboxgl-choropleth-container'),
+        mapLegend: 'mapboxgl-choropleth-legend',
 
         /**
          * Init
@@ -90,6 +94,8 @@ import chroma from 'chroma-js';
             map = new mapboxgl.Map(this.options.mapboxConfig);
 
             this.map = map;
+
+            this.createColorScales();
 
             // Map load promise
             new Promise((resolve, reject) => {
@@ -116,16 +122,17 @@ import chroma from 'chroma-js';
             this.initRevealActivelayerEvent();
             this.initPropEvent();
             this.hoverEvent();
+            this.addMapLegend();
         },
 
         /**
          * 
          */
         addMapLayers() {
-            var layers = this.map.getStyle().layers;
+            let layers = this.map.getStyle().layers;
             // Find the index of the first symbol layer in the map style
-            var firstSymbolId;
-            for (var i = 0; i < layers.length; i++) {
+            let firstSymbolId;
+            for (let i = 0; i < layers.length; i++) {
                 if (layers[i].type === 'symbol') {
                     firstSymbolId = layers[i].id;
                     break;
@@ -156,17 +163,35 @@ import chroma from 'chroma-js';
 
                 this.map.setFilter('countries-layer', ['has', 'density']);
 
-
-                // Show the first layer
-                if (index === 0) {
-                    this.revealActiveLayer(layer.id);
-                }
-
                 // Store all the custom layers
                 this.customLayers.push(layer.id);
             });
 
+            // Show the first layer
+            this.revealActiveLayer(this.options.mapConfig.layers[0].id);
 
+            // Set the first layer property name
+            this.setActivePropName(this.options.mapConfig.layers[0].properties[0].property);
+
+            // Set active properties
+            this.setActiveProperties();
+        },
+
+        /**
+         * 
+         */
+        createColorScales() {
+            this.options.mapConfig.layers.map((layer) => {
+                let colorScale;
+
+                layer.properties.map((property) => {
+                    colorScale = chroma.scale(property.colors).mode('lch').colors(property.step.length);
+
+                    property['colorScale'] = colorScale;
+                });
+
+
+            });
         },
 
         /**
@@ -178,11 +203,9 @@ import chroma from 'chroma-js';
                 ['get', prop.property]
             ];
 
-            let scaleStep = prop.step;
-
-            chroma.scale(prop.colors).mode('lch').colors(scaleStep.length).map((color, index) => {
+            prop.colorScale.map((color, index) => {
                 if (index > 0) {
-                    fillColorArray.push(scaleStep[index])    
+                    fillColorArray.push(prop.step[index])    
                 }
 
                 fillColorArray.push(color);
@@ -229,7 +252,7 @@ import chroma from 'chroma-js';
         },
 
         /**
-         * 
+         * Show user selected layer (active layer)
          */
         revealActiveLayer(activeLayer) {
             this.activeLayer = activeLayer;
@@ -254,7 +277,7 @@ import chroma from 'chroma-js';
 
 
         /**
-         * 
+         * Add a hover event for polygons
          */
         hoverEvent(activeLayer) {
             this.customLayers.forEach((layer) => {
@@ -269,14 +292,14 @@ import chroma from 'chroma-js';
 
 
         /**
-         * 
+         * Init the event handler for layer properties
          */
         initPropEvent() {
             $('.js-choropleth-prop-anchor').on('click', this.propEventHandler.bind(this));
         },
 
         /**
-         * 
+         * Handles the event for layer properties (when users select a property to show on the map)
          */
         propEventHandler(event) {
             event.preventDefault();
@@ -293,7 +316,89 @@ import chroma from 'chroma-js';
                     });
                 }
             })
+        },
+
+        /**
+         * 
+         */
+        setActivePropName(propName) {
+            this.activeLayerPropName = propName;
+        },
+
+        /**
+         * 
+         */
+        setActiveProperties() {
+            this.options.mapConfig.layers.map((item) => {
+                if (item.id === this.activeLayer) {
+                    item.properties.map((property) => {
+                        if (property.property === this.activeLayerPropName) {
+                            this.activeLayerProps = property;
+                        }
+                    })
+                }
+            })
+        },
+
+        /**
+         * Add legends to the map
+         */
+        addMapLegend() {
+            console.log(this.activeLayerProps);
+
+            if ($(`.${this.mapLegend}`).length) {
+                $(`.${this.mapLegend}`).remove();
+            }
+
+            let colorScale = this.activeLayerProps.colorScale;
+            let steps = this.activeLayerProps.step;
+
+            // Reverse the legend
+            if (this.options.mapConfig.legendReverse) {
+                colorScale = colorScale.slice().reverse();
+                steps = steps.slice().reverse();
+            }
+
+            let rows = '';
+            let stepsLength = steps.length;
+
+
+            colorScale.forEach((color, index) => {
+                let rowTitle;
+
+                if (this.options.mapConfig.legendReverse) {
+                    if (index === 0) {
+                        rowTitle = `${steps[index]}+`;
+                    } else {
+                        rowTitle = `${steps[index]}–${steps[index - 1]}`;
+                    }
+                } else {
+                    if (index < (stepsLength-1)) {
+                        rowTitle = `${steps[index]}–${steps[index + 1]}`;
+                    } else {
+                        rowTitle = `${steps[index]}+`;
+                    }                    
+                }
+
+                rows += `
+                    <div class="mapboxgl-choropleth-legend__row">
+                        <div class="mapboxgl-choropleth-legend__fill" style="background-color: ${color};"></div>
+                        <div class="mapboxgl-choropleth-legend__title">
+                            ${rowTitle}
+                        </div>
+                    </div>
+                `;
+            })
+
+            this.$mapContainer.append(`
+                <div class="${this.mapLegend}">
+                    <div class="mapboxgl-choropleth-legend__wrapper">
+                        ${rows}
+                    </div>
+                </div>
+            `)
         }
+        
     }
 
     // console.log($.fn);

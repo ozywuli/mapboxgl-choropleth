@@ -2806,7 +2806,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         /**
          * Map configuration
          */
-        mapConfig: {},
+        mapConfig: {
+            legendReverse: true
+        },
 
         featureClickEventCallback: function featureClickEventCallback(event) {}
     };
@@ -2839,7 +2841,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         \*------------------------------------*/
         map: null,
         activeLayer: null,
+        activeLayerPropName: null,
+        activeLayerProps: null,
         customLayers: [],
+        $mapContainer: $('.mapboxgl-choropleth-container'),
+        mapLegend: 'mapboxgl-choropleth-legend',
 
         /**
          * Init
@@ -2864,6 +2870,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             map = new mapboxgl.Map(this.options.mapboxConfig);
 
             this.map = map;
+
+            this.createColorScales();
 
             // Map load promise
             new Promise(function (resolve, reject) {
@@ -2892,6 +2900,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             this.initRevealActivelayerEvent();
             this.initPropEvent();
             this.hoverEvent();
+            this.addMapLegend();
         },
 
 
@@ -2903,7 +2912,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             var layers = this.map.getStyle().layers;
             // Find the index of the first symbol layer in the map style
-            var firstSymbolId;
+            var firstSymbolId = void 0;
             for (var i = 0; i < layers.length; i++) {
                 if (layers[i].type === 'symbol') {
                     firstSymbolId = layers[i].id;
@@ -2935,13 +2944,33 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
                 _this2.map.setFilter('countries-layer', ['has', 'density']);
 
-                // Show the first layer
-                if (index === 0) {
-                    _this2.revealActiveLayer(layer.id);
-                }
-
                 // Store all the custom layers
                 _this2.customLayers.push(layer.id);
+            });
+
+            // Show the first layer
+            this.revealActiveLayer(this.options.mapConfig.layers[0].id);
+
+            // Set the first layer property name
+            this.setActivePropName(this.options.mapConfig.layers[0].properties[0].property);
+
+            // Set active properties
+            this.setActiveProperties();
+        },
+
+
+        /**
+         * 
+         */
+        createColorScales: function createColorScales() {
+            this.options.mapConfig.layers.map(function (layer) {
+                var colorScale = void 0;
+
+                layer.properties.map(function (property) {
+                    colorScale = _chromaJs2.default.scale(property.colors).mode('lch').colors(property.step.length);
+
+                    property['colorScale'] = colorScale;
+                });
             });
         },
 
@@ -2952,11 +2981,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         paintFill: function paintFill(prop) {
             var fillColorArray = ['step', ['get', prop.property]];
 
-            var scaleStep = prop.step;
-
-            _chromaJs2.default.scale(prop.colors).mode('lch').colors(scaleStep.length).map(function (color, index) {
+            prop.colorScale.map(function (color, index) {
                 if (index > 0) {
-                    fillColorArray.push(scaleStep[index]);
+                    fillColorArray.push(prop.step[index]);
                 }
 
                 fillColorArray.push(color);
@@ -3010,7 +3037,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 
         /**
-         * 
+         * Show user selected layer (active layer)
          */
         revealActiveLayer: function revealActiveLayer(activeLayer) {
             var _this4 = this;
@@ -3037,7 +3064,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 
         /**
-         * 
+         * Add a hover event for polygons
          */
         hoverEvent: function hoverEvent(activeLayer) {
             var _this5 = this;
@@ -3054,7 +3081,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 
         /**
-         * 
+         * Init the event handler for layer properties
          */
         initPropEvent: function initPropEvent() {
             $('.js-choropleth-prop-anchor').on('click', this.propEventHandler.bind(this));
@@ -3062,7 +3089,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 
         /**
-         * 
+         * Handles the event for layer properties (when users select a property to show on the map)
          */
         propEventHandler: function propEventHandler(event) {
             var _this6 = this;
@@ -3081,6 +3108,80 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                     });
                 }
             });
+        },
+
+
+        /**
+         * 
+         */
+        setActivePropName: function setActivePropName(propName) {
+            this.activeLayerPropName = propName;
+        },
+
+
+        /**
+         * 
+         */
+        setActiveProperties: function setActiveProperties() {
+            var _this7 = this;
+
+            this.options.mapConfig.layers.map(function (item) {
+                if (item.id === _this7.activeLayer) {
+                    item.properties.map(function (property) {
+                        if (property.property === _this7.activeLayerPropName) {
+                            _this7.activeLayerProps = property;
+                        }
+                    });
+                }
+            });
+        },
+
+
+        /**
+         * Add legends to the map
+         */
+        addMapLegend: function addMapLegend() {
+            var _this8 = this;
+
+            console.log(this.activeLayerProps);
+
+            if ($('.' + this.mapLegend).length) {
+                $('.' + this.mapLegend).remove();
+            }
+
+            var colorScale = this.activeLayerProps.colorScale;
+            var steps = this.activeLayerProps.step;
+
+            // Reverse the legend
+            if (this.options.mapConfig.legendReverse) {
+                colorScale = colorScale.slice().reverse();
+                steps = steps.slice().reverse();
+            }
+
+            var rows = '';
+            var stepsLength = steps.length;
+
+            colorScale.forEach(function (color, index) {
+                var rowTitle = void 0;
+
+                if (_this8.options.mapConfig.legendReverse) {
+                    if (index === 0) {
+                        rowTitle = steps[index] + '+';
+                    } else {
+                        rowTitle = steps[index] + '\u2013' + steps[index - 1];
+                    }
+                } else {
+                    if (index < stepsLength - 1) {
+                        rowTitle = steps[index] + '\u2013' + steps[index + 1];
+                    } else {
+                        rowTitle = steps[index] + '+';
+                    }
+                }
+
+                rows += '\n                    <div class="mapboxgl-choropleth-legend__row">\n                        <div class="mapboxgl-choropleth-legend__fill" style="background-color: ' + color + ';"></div>\n                        <div class="mapboxgl-choropleth-legend__title">\n                            ' + rowTitle + '\n                        </div>\n                    </div>\n                ';
+            });
+
+            this.$mapContainer.append('\n                <div class="' + this.mapLegend + '">\n                    <div class="mapboxgl-choropleth-legend__wrapper">\n                        ' + rows + '\n                    </div>\n                </div>\n            ');
         }
     };
 
