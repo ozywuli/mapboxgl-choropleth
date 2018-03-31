@@ -2781,6 +2781,16 @@ var _chromaJs2 = _interopRequireDefault(_chromaJs);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // import {$, jQuery} from 'jquery';
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
 ;(function ($, window, document, undefined) {
     /**
      * Plugin namespace
@@ -2853,6 +2863,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         init: function init() {
             // console.log('init');
             this.instantiateMap();
+
+            console.log(getParameterByName('layer'));
         },
         // init()
 
@@ -3022,23 +3034,21 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Handles the anchor event for showing/revealing layers
          */
         revealActiveLayerEventHandler: function revealActiveLayerEventHandler(event) {
-            var _this4 = this;
-
             event.preventDefault();
             event.stopPropagation();
 
             // Get name of clicked layer from anchor
             var clickedLayer = $(event.currentTarget).attr('data-layer');
 
+            var queryString = 'layer=' + clickedLayer;
+            var pageUrl = '?' + queryString;
+            window.history.pushState('', '', pageUrl);
+
             // Reveal this layer
             this.revealActiveLayer(clickedLayer);
 
             // Set active properties
-            this.options.mapConfig.layers.map(function (layer) {
-                if (layer.id === clickedLayer) {
-                    _this4.layerProperty.setActiveProperty.call(_this4, layer.properties[0].property);
-                }
-            });
+            this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, clickedLayer).properties[0].property);
 
             // Update map legend
             this.addMapLegend();
@@ -3049,14 +3059,14 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Show user selected layer (active layer)
          */
         revealActiveLayer: function revealActiveLayer(activeLayer) {
-            var _this5 = this;
+            var _this4 = this;
 
             this.activeLayer = activeLayer;
 
             // Hide unclicked layers
             this.customLayers.forEach(function (layer) {
                 if (layer !== activeLayer) {
-                    _this5.map.setLayoutProperty(layer, 'visibility', 'none');
+                    _this4.map.setLayoutProperty(layer, 'visibility', 'none');
                 }
             });
 
@@ -3076,14 +3086,14 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Add a hover event for polygons
          */
         hoverEvent: function hoverEvent(activeLayer) {
-            var _this6 = this;
+            var _this5 = this;
 
             this.customLayers.forEach(function (layer) {
-                _this6.map.on('mouseenter', layer, function (event) {
-                    _this6.map.getCanvas().style.cursor = 'pointer';
+                _this5.map.on('mouseenter', layer, function (event) {
+                    _this5.map.getCanvas().style.cursor = 'pointer';
                 });
-                _this6.map.on('mouseleave', layer, function (event) {
-                    _this6.map.getCanvas().style.cursor = '';
+                _this5.map.on('mouseleave', layer, function (event) {
+                    _this5.map.getCanvas().style.cursor = '';
                 });
             });
         },
@@ -3101,23 +3111,19 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Handles the event for layer properties (when users select a property to show on the map)
          */
         propEventHandler: function propEventHandler(event) {
-            var _this7 = this;
+            var _this6 = this;
 
             event.preventDefault();
             event.stopPropagation();
 
             var clickedProp = $(event.currentTarget).attr('data-prop');
 
-            this.options.mapConfig.layers.map(function (layer) {
-                if (_this7.activeLayer === layer.id) {
-                    layer.properties.map(function (prop) {
-                        if (prop.property === clickedProp) {
-                            _this7.map.setPaintProperty(_this7.activeLayer, 'fill-color', _this7.paintFill(prop));
+            this.layerProperty.findLayer.call(this, this.activeLayer).properties.map(function (property) {
+                if (property.property === clickedProp) {
+                    _this6.map.setPaintProperty(_this6.activeLayer, 'fill-color', _this6.paintFill(property));
 
-                            _this7.layerProperty.setActiveProperty.call(_this7, clickedProp);
-                            _this7.addMapLegend();
-                        }
-                    });
+                    _this6.layerProperty.setActiveProperty.call(_this6, clickedProp);
+                    _this6.addMapLegend();
                 }
             });
         },
@@ -3127,25 +3133,30 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * 
          */
         layerProperty: {
+            findLayer: function findLayer(layerName) {
+                var foundLayer = void 0;
+                this.options.mapConfig.layers.map(function (layer) {
+                    if (layer.id === layerName) {
+                        foundLayer = layer;
+                    }
+                });
+                return foundLayer;
+            },
             setActivePropertyName: function setActivePropertyName(propName) {
                 this.activeLayerPropName = propName;
             },
-            setActivePropertyProps: function setActivePropertyProps(properties) {
-                var _this8 = this;
+            setActivePropertyProps: function setActivePropertyProps() {
+                var _this7 = this;
 
-                this.options.mapConfig.layers.map(function (item) {
-                    if (item.id === _this8.activeLayer) {
-                        item.properties.map(function (property) {
-                            if (property.property === _this8.activeLayerPropName) {
-                                _this8.activeLayerProps = property;
-                            }
-                        });
+                this.layerProperty.findLayer.call(this, this.activeLayer).properties.map(function (property) {
+                    if (property.property === _this7.activeLayerPropName) {
+                        _this7.activeLayerProps = property;
                     }
                 });
             },
-            setActiveProperty: function setActiveProperty(propName, properties) {
+            setActiveProperty: function setActiveProperty(propName) {
                 this.layerProperty.setActivePropertyName.call(this, propName);
-                this.layerProperty.setActivePropertyProps.call(this, properties);
+                this.layerProperty.setActivePropertyProps.call(this);
             }
         },
 
@@ -3153,10 +3164,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Add legends to the map
          */
         addMapLegend: function addMapLegend() {
-            var _this9 = this;
+            var _this8 = this;
 
-            console.log(this.activeLayerPropName);
-            console.log(this.activeLayerProps);
+            // console.log(this.activeLayerPropName);
+            // console.log(this.activeLayerProps);
 
             if ($('.' + this.mapLegend).length) {
                 $('.' + this.mapLegend).remove();
@@ -3177,7 +3188,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             colorScale.forEach(function (color, index) {
                 var rowTitle = void 0;
 
-                if (_this9.options.mapConfig.legendReverse) {
+                if (_this8.options.mapConfig.legendReverse) {
                     if (index === 0) {
                         rowTitle = steps[index] + '+';
                     } else {

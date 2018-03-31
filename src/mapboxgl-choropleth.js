@@ -3,6 +3,16 @@ import config from '../config';
 import chroma from 'chroma-js';
 
 
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
 ;(function( $, window, document, undefined ) {
     /**
      * Plugin namespace
@@ -79,6 +89,8 @@ import chroma from 'chroma-js';
         init() {
             // console.log('init');
             this.instantiateMap();
+
+            console.log(getParameterByName('layer'));
 
         }, // init()
 
@@ -246,16 +258,15 @@ import chroma from 'chroma-js';
             // Get name of clicked layer from anchor
             let clickedLayer = $(event.currentTarget).attr('data-layer');
 
+            let queryString = `layer=${clickedLayer}`;
+            let pageUrl = '?' + queryString;
+            window.history.pushState('', '', pageUrl);
+
             // Reveal this layer
             this.revealActiveLayer(clickedLayer);
 
             // Set active properties
-            this.options.mapConfig.layers.map((layer) => {
-                if (layer.id === clickedLayer) {
-                    this.layerProperty.setActiveProperty.call(this, layer.properties[0].property);
-                }
-            })
-            
+            this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, clickedLayer).properties[0].property)
 
             // Update map legend
             this.addMapLegend();
@@ -317,41 +328,42 @@ import chroma from 'chroma-js';
 
             let clickedProp = $(event.currentTarget).attr('data-prop');
 
-            this.options.mapConfig.layers.map((layer) => {
-                if (this.activeLayer === layer.id) {
-                    layer.properties.map((prop) => {
-                        if (prop.property === clickedProp) {
-                            this.map.setPaintProperty(this.activeLayer, 'fill-color', this.paintFill(prop));
+            this.layerProperty.findLayer.call(this, this.activeLayer).properties.map((property) => {
+                if (property.property === clickedProp) {
+                    this.map.setPaintProperty(this.activeLayer, 'fill-color', this.paintFill(property));
 
-                            this.layerProperty.setActiveProperty.call(this, clickedProp);
-                            this.addMapLegend();
-                        }
-                    });
+                    this.layerProperty.setActiveProperty.call(this, clickedProp);
+                    this.addMapLegend();
                 }
-            })
+            });
         },
 
         /**
          * 
          */
         layerProperty: {
+            findLayer(layerName) {
+                let foundLayer;
+                this.options.mapConfig.layers.map((layer) => {
+                    if (layer.id === layerName) {
+                        foundLayer = layer;
+                    }
+                });
+                return foundLayer;
+            },
             setActivePropertyName(propName) {
                 this.activeLayerPropName = propName;
             },
-            setActivePropertyProps(properties) {
-                this.options.mapConfig.layers.map((item) => {
-                    if (item.id === this.activeLayer) {
-                        item.properties.map((property) => {
-                            if (property.property === this.activeLayerPropName) {
-                                this.activeLayerProps = property;
-                            }
-                        })
-                    }
-                })
+            setActivePropertyProps() {
+                this.layerProperty.findLayer.call(this, this.activeLayer).properties.map((property) => {
+                    if (property.property === this.activeLayerPropName) {
+                        this.activeLayerProps = property;
+                    }                    
+                });
             },
-            setActiveProperty(propName, properties) {
+            setActiveProperty(propName) {
                 this.layerProperty.setActivePropertyName.call(this, propName);
-                this.layerProperty.setActivePropertyProps.call(this, properties);
+                this.layerProperty.setActivePropertyProps.call(this);
             }
         },
 
@@ -360,8 +372,8 @@ import chroma from 'chroma-js';
          * Add legends to the map
          */
         addMapLegend() {
-            console.log(this.activeLayerPropName);
-            console.log(this.activeLayerProps);
+            // console.log(this.activeLayerPropName);
+            // console.log(this.activeLayerProps);
 
             if ($(`.${this.mapLegend}`).length) {
                 $(`.${this.mapLegend}`).remove();
