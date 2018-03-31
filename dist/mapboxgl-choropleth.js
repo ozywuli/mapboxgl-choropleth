@@ -2951,11 +2951,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // Show the first layer
             this.revealActiveLayer(this.options.mapConfig.layers[0].id);
 
-            // Set the first layer property name
-            this.setActivePropName(this.options.mapConfig.layers[0].properties[0].property);
-
-            // Set active properties
-            this.setActiveProperties();
+            this.layerProperty.setActiveProperty.call(this, this.options.mapConfig.layers[0].properties[0].property);
         },
 
 
@@ -3026,13 +3022,26 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Handles the anchor event for showing/revealing layers
          */
         revealActiveLayerEventHandler: function revealActiveLayerEventHandler(event) {
+            var _this4 = this;
+
             event.preventDefault();
             event.stopPropagation();
 
             // Get name of clicked layer from anchor
             var clickedLayer = $(event.currentTarget).attr('data-layer');
 
+            // Reveal this layer
             this.revealActiveLayer(clickedLayer);
+
+            // Set active properties
+            this.options.mapConfig.layers.map(function (layer) {
+                if (layer.id === clickedLayer) {
+                    _this4.layerProperty.setActiveProperty.call(_this4, layer.properties[0].property);
+                }
+            });
+
+            // Update map legend
+            this.addMapLegend();
         },
 
 
@@ -3040,14 +3049,14 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Show user selected layer (active layer)
          */
         revealActiveLayer: function revealActiveLayer(activeLayer) {
-            var _this4 = this;
+            var _this5 = this;
 
             this.activeLayer = activeLayer;
 
             // Hide unclicked layers
             this.customLayers.forEach(function (layer) {
                 if (layer !== activeLayer) {
-                    _this4.map.setLayoutProperty(layer, 'visibility', 'none');
+                    _this5.map.setLayoutProperty(layer, 'visibility', 'none');
                 }
             });
 
@@ -3067,14 +3076,14 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Add a hover event for polygons
          */
         hoverEvent: function hoverEvent(activeLayer) {
-            var _this5 = this;
+            var _this6 = this;
 
             this.customLayers.forEach(function (layer) {
-                _this5.map.on('mouseenter', layer, function (event) {
-                    _this5.map.getCanvas().style.cursor = 'pointer';
+                _this6.map.on('mouseenter', layer, function (event) {
+                    _this6.map.getCanvas().style.cursor = 'pointer';
                 });
-                _this5.map.on('mouseleave', layer, function (event) {
-                    _this5.map.getCanvas().style.cursor = '';
+                _this6.map.on('mouseleave', layer, function (event) {
+                    _this6.map.getCanvas().style.cursor = '';
                 });
             });
         },
@@ -3092,7 +3101,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Handles the event for layer properties (when users select a property to show on the map)
          */
         propEventHandler: function propEventHandler(event) {
-            var _this6 = this;
+            var _this7 = this;
 
             event.preventDefault();
             event.stopPropagation();
@@ -3100,10 +3109,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             var clickedProp = $(event.currentTarget).attr('data-prop');
 
             this.options.mapConfig.layers.map(function (layer) {
-                if (_this6.activeLayer === layer.id) {
+                if (_this7.activeLayer === layer.id) {
                     layer.properties.map(function (prop) {
                         if (prop.property === clickedProp) {
-                            _this6.map.setPaintProperty(_this6.activeLayer, 'fill-color', _this6.paintFill(prop));
+                            _this7.map.setPaintProperty(_this7.activeLayer, 'fill-color', _this7.paintFill(prop));
+
+                            _this7.layerProperty.setActiveProperty.call(_this7, clickedProp);
+                            _this7.addMapLegend();
                         }
                     });
                 }
@@ -3114,35 +3126,36 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         /**
          * 
          */
-        setActivePropName: function setActivePropName(propName) {
-            this.activeLayerPropName = propName;
+        layerProperty: {
+            setActivePropertyName: function setActivePropertyName(propName) {
+                this.activeLayerPropName = propName;
+            },
+            setActivePropertyProps: function setActivePropertyProps(properties) {
+                var _this8 = this;
+
+                this.options.mapConfig.layers.map(function (item) {
+                    if (item.id === _this8.activeLayer) {
+                        item.properties.map(function (property) {
+                            if (property.property === _this8.activeLayerPropName) {
+                                _this8.activeLayerProps = property;
+                            }
+                        });
+                    }
+                });
+            },
+            setActiveProperty: function setActiveProperty(propName, properties) {
+                this.layerProperty.setActivePropertyName.call(this, propName);
+                this.layerProperty.setActivePropertyProps.call(this, properties);
+            }
         },
-
-
-        /**
-         * 
-         */
-        setActiveProperties: function setActiveProperties() {
-            var _this7 = this;
-
-            this.options.mapConfig.layers.map(function (item) {
-                if (item.id === _this7.activeLayer) {
-                    item.properties.map(function (property) {
-                        if (property.property === _this7.activeLayerPropName) {
-                            _this7.activeLayerProps = property;
-                        }
-                    });
-                }
-            });
-        },
-
 
         /**
          * Add legends to the map
          */
         addMapLegend: function addMapLegend() {
-            var _this8 = this;
+            var _this9 = this;
 
+            console.log(this.activeLayerPropName);
             console.log(this.activeLayerProps);
 
             if ($('.' + this.mapLegend).length) {
@@ -3164,7 +3177,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             colorScale.forEach(function (color, index) {
                 var rowTitle = void 0;
 
-                if (_this8.options.mapConfig.legendReverse) {
+                if (_this9.options.mapConfig.legendReverse) {
                     if (index === 0) {
                         rowTitle = steps[index] + '+';
                     } else {

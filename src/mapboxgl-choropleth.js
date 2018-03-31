@@ -170,12 +170,10 @@ import chroma from 'chroma-js';
             // Show the first layer
             this.revealActiveLayer(this.options.mapConfig.layers[0].id);
 
-            // Set the first layer property name
-            this.setActivePropName(this.options.mapConfig.layers[0].properties[0].property);
 
-            // Set active properties
-            this.setActiveProperties();
+            this.layerProperty.setActiveProperty.call(this, this.options.mapConfig.layers[0].properties[0].property);
         },
+
 
         /**
          * 
@@ -248,7 +246,19 @@ import chroma from 'chroma-js';
             // Get name of clicked layer from anchor
             let clickedLayer = $(event.currentTarget).attr('data-layer');
 
+            // Reveal this layer
             this.revealActiveLayer(clickedLayer);
+
+            // Set active properties
+            this.options.mapConfig.layers.map((layer) => {
+                if (layer.id === clickedLayer) {
+                    this.layerProperty.setActiveProperty.call(this, layer.properties[0].property);
+                }
+            })
+            
+
+            // Update map legend
+            this.addMapLegend();
         },
 
         /**
@@ -312,6 +322,9 @@ import chroma from 'chroma-js';
                     layer.properties.map((prop) => {
                         if (prop.property === clickedProp) {
                             this.map.setPaintProperty(this.activeLayer, 'fill-color', this.paintFill(prop));
+
+                            this.layerProperty.setActiveProperty.call(this, clickedProp);
+                            this.addMapLegend();
                         }
                     });
                 }
@@ -321,29 +334,33 @@ import chroma from 'chroma-js';
         /**
          * 
          */
-        setActivePropName(propName) {
-            this.activeLayerPropName = propName;
+        layerProperty: {
+            setActivePropertyName(propName) {
+                this.activeLayerPropName = propName;
+            },
+            setActivePropertyProps(properties) {
+                this.options.mapConfig.layers.map((item) => {
+                    if (item.id === this.activeLayer) {
+                        item.properties.map((property) => {
+                            if (property.property === this.activeLayerPropName) {
+                                this.activeLayerProps = property;
+                            }
+                        })
+                    }
+                })
+            },
+            setActiveProperty(propName, properties) {
+                this.layerProperty.setActivePropertyName.call(this, propName);
+                this.layerProperty.setActivePropertyProps.call(this, properties);
+            }
         },
 
-        /**
-         * 
-         */
-        setActiveProperties() {
-            this.options.mapConfig.layers.map((item) => {
-                if (item.id === this.activeLayer) {
-                    item.properties.map((property) => {
-                        if (property.property === this.activeLayerPropName) {
-                            this.activeLayerProps = property;
-                        }
-                    })
-                }
-            })
-        },
 
         /**
          * Add legends to the map
          */
         addMapLegend() {
+            console.log(this.activeLayerPropName);
             console.log(this.activeLayerProps);
 
             if ($(`.${this.mapLegend}`).length) {
