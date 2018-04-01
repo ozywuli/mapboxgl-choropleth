@@ -3015,22 +3015,18 @@ function getParameterByName(name, url) {
 
             console.log('initQueryParamListener');
 
-            var layer = void 0;
-            var property = void 0;
-
             if (getParameterByName('layer')) {
-
                 this.layerProperty.setActiveLayer.call(this, getParameterByName('layer', null));
             } else {}
 
-            if (getParameterByName('layer')) {}
-
-            console.log(getParameterByName('property'));
-
             window.onpopstate = history.onpushstate = function (event) {
                 var layer = getParameterByName('layer');
-                // console.log(getParameterByName('layer'));
-                _this3.updateLayer(layer);
+                var property = void 0;
+                if (getParameterByName('property')) {
+                    property = getParameterByName('property');
+                }
+                console.log(property);
+                _this3.updateLayer(layer, property);
             };
         },
 
@@ -3119,10 +3115,8 @@ function getParameterByName(name, url) {
             // Double check visibility of layer
             var visibility = this.map.getLayoutProperty(activeLayer, 'visibility');
 
-            // Hide layer if it wasn't visible before, otherwise reveal it
-            if (visibility === 'visible') {
-                this.map.setLayoutProperty(activeLayer, 'visibility', 'none');
-            } else {
+            // Reveal layer if it isn't visible
+            if (visibility !== 'visible') {
                 this.map.setLayoutProperty(activeLayer, 'visibility', 'visible');
             }
         },

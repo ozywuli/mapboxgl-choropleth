@@ -232,26 +232,21 @@ function getParameterByName(name, url) {
         initQueryParamListener() {
             console.log('initQueryParamListener');
 
-            let layer;
-            let property;
-
             if (getParameterByName('layer')) {
-
                 this.layerProperty.setActiveLayer.call(this, getParameterByName('layer', null));
             } else {
 
             }
 
-            if (getParameterByName('layer')) {
-
-            }
-
-            console.log(getParameterByName('property'));
 
             window.onpopstate = history.onpushstate = (event) => {
-                let layer = getParameterByName('layer')
-                // console.log(getParameterByName('layer'));
-                this.updateLayer(layer);
+                let layer = getParameterByName('layer');
+                let property;
+                if (getParameterByName('property')) {
+                    property = getParameterByName('property');
+                }
+                console.log(property);
+                this.updateLayer(layer, property);
             }
 
         },
@@ -331,10 +326,8 @@ function getParameterByName(name, url) {
             // Double check visibility of layer
             let visibility = this.map.getLayoutProperty(activeLayer, 'visibility');
 
-            // Hide layer if it wasn't visible before, otherwise reveal it
-            if (visibility === 'visible') {
-                this.map.setLayoutProperty(activeLayer, 'visibility', 'none');
-            } else {
+            // Reveal layer if it isn't visible
+            if (visibility !== 'visible') {
                 this.map.setLayoutProperty(activeLayer, 'visibility', 'visible');
             }
         },
