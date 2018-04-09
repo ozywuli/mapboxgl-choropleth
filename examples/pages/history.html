@@ -11,12 +11,92 @@
 </head>
 <body>
 
-<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Error eos, quisquam, fugit, dignissimos natus sunt aspernatur dolore aliquam temporibus sapiente voluptate tempora, autem vel nostrum enim magni magnam quod laborum.</p>
+<div class="mapboxgl-choropleth-container">
+    <div id='map'></div>    
+</div>
+
+
+<aside class="sidebar">
+    <div class="layers">
+        <a href="#" class="js-choropleth-layer-anchor" data-layer="countries-layer">Countries</a>
+        <a href="#" class="js-choropleth-layer-anchor" data-layer="states-layer">States</a>
+        <a href="#" class="js-choropleth-layer-anchor" data-layer="alabama-layer">Alabama</a>
+
+    </div>
+    <div class="props">
+        <a href="#" class="js-choropleth-prop-anchor" data-layer="alabama-layer" data-prop="density">Alabama Density</a>
+        <a href="#" class="js-choropleth-prop-anchor" data-layer="alabama-layer" data-prop="population">Alabama Population</a>
+    </div>
+</aside>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
 <script src="mapboxgl-choropleth.js"></script>
 <script>
 
+
+// $.getJSON('data/stateData.geojson', (data) => {
+//     console.log(data);
+// })
+
+let myChoropleth = new Choropleth({
+    featureClickEventCallback(event) {
+        console.log(event);
+    },
+    mapConfig: {
+        layers: [
+            {
+                id: "countries-layer",
+                source: {
+                    id: 'countries',
+                    type: 'geojson',
+                    data: 'data/countries.geojson'
+                },
+                properties: [
+                    {
+                        property: 'density',
+                        colors: ['#FFEDA0','#BD0026'],
+                        step: [0, 10, 20, 50, 100, 200, 500, 1000]
+                    }
+                ]
+            },
+            {
+                id: "states-layer",
+                source: {
+                    id: 'states',
+                    type: 'geojson',
+                    data: 'data/stateData.geojson'
+                },
+                properties: [
+                    {
+                        property: 'density',
+                        colors: ['#FFEDA0','#BD0026'],
+                        step: [0, 100, 200, 300, 400, 500]
+                    }
+                ]
+            },
+            {
+                id: "alabama-layer",
+                source: {
+                    id: 'alabama',
+                    type: 'geojson',
+                    data: 'data/alabama.geojson'
+                },
+                properties: [
+                    {
+                        property: 'population',
+                        colors: ['yellow', 'green'],
+                        step: [0, 500000, 1000000],
+                    },
+                    {
+                        property: 'density',
+                        colors: ['blue', 'red'],
+                        step: [0, 50, 100]
+                    }
+                ]
+            }
+        ]
+    }
+});
 
 </script>
 

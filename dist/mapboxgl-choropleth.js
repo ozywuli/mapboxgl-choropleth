@@ -2768,19 +2768,11 @@ exports.default = config;
 }).call(this);
 
 },{}],3:[function(require,module,exports){
-'use strict';
+"use strict";
 
-var _config = require('../config');
-
-var _config2 = _interopRequireDefault(_config);
-
-var _chromaJs = require('chroma-js');
-
-var _chromaJs2 = _interopRequireDefault(_chromaJs);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-// import {$, jQuery} from 'jquery';
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, "\\$&");
@@ -2791,7 +2783,27 @@ function getParameterByName(name, url) {
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
-;(function ($, window, document, undefined) {
+exports.default = getParameterByName;
+
+},{}],4:[function(require,module,exports){
+'use strict';
+
+var _config = require('../config');
+
+var _config2 = _interopRequireDefault(_config);
+
+var _chromaJs = require('chroma-js');
+
+var _chromaJs2 = _interopRequireDefault(_chromaJs);
+
+var _getParameterByName = require('./helpers/getParameterByName');
+
+var _getParameterByName2 = _interopRequireDefault(_getParameterByName);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+; // import {$, jQuery} from 'jquery';
+(function ($, window, document, undefined) {
     /**
      * Plugin namespace
      */
@@ -2967,9 +2979,14 @@ function getParameterByName(name, url) {
          */
         displayInitialLayer: function displayInitialLayer() {
             console.log('displayInitialLayer');
-            this.revealActiveLayer(this.activeLayer);
-            this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, this.activeLayer).properties[0].property);
-            this.addMapLegend();
+
+            if ((0, _getParameterByName2.default)('property')) {
+                this.layerProperty.setActiveProperty.call(this, (0, _getParameterByName2.default)('property'));
+            } else {
+                this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, this.activeLayer).properties[0].property);
+            }
+
+            this.updateLayer(this.activeLayer, this.activeLayerPropName);
         },
 
 
@@ -3015,15 +3032,17 @@ function getParameterByName(name, url) {
 
             console.log('initQueryParamListener');
 
-            if (getParameterByName('layer')) {
-                this.layerProperty.setActiveLayer.call(this, getParameterByName('layer', null));
-            } else {}
+            if ((0, _getParameterByName2.default)('layer')) {
+                this.layerProperty.setActiveLayer.call(this, (0, _getParameterByName2.default)('layer', null));
+            } else {
+                this.layerProperty.setActiveLayer.call(this, this.options.mapConfig.layers[0].id);
+            }
 
             window.onpopstate = history.onpushstate = function (event) {
-                var layer = getParameterByName('layer');
+                var layer = (0, _getParameterByName2.default)('layer');
                 var property = void 0;
-                if (getParameterByName('property')) {
-                    property = getParameterByName('property');
+                if ((0, _getParameterByName2.default)('property')) {
+                    property = (0, _getParameterByName2.default)('property');
                 }
                 console.log(property);
                 _this3.updateLayer(layer, property);
@@ -3103,7 +3122,10 @@ function getParameterByName(name, url) {
         revealActiveLayer: function revealActiveLayer(activeLayer) {
             var _this5 = this;
 
+            console.log('method: revealActiveLayer');
+
             this.activeLayer = activeLayer;
+            console.log(this.activeLayer);
 
             // Hide unclicked layers
             this.customLayers.forEach(function (layer) {
@@ -3128,10 +3150,13 @@ function getParameterByName(name, url) {
         updateLayer: function updateLayer(layer, propertyName) {
             var _this6 = this;
 
-            if (!propertyName) {
-                // Reveal this layer
-                this.revealActiveLayer(layer);
+            console.log('method: updateLayer');
 
+            // Reveal this layer
+            this.revealActiveLayer(layer);
+
+            // if property isn't passed in
+            if (!propertyName) {
                 // Set active properties
                 this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, layer).properties[0].property);
             } else {
@@ -3188,7 +3213,7 @@ function getParameterByName(name, url) {
 
 
         /**
-         * 
+         * The layer property object
          */
         layerProperty: {
             setActiveLayer: function setActiveLayer(layer) {
@@ -3203,7 +3228,6 @@ function getParameterByName(name, url) {
                 });
                 return foundLayer;
             },
-            findPropertyProps: function findPropertyProps() {},
             setActivePropertyName: function setActivePropertyName(propName) {
                 this.activeLayerPropName = propName;
             },
@@ -3217,6 +3241,7 @@ function getParameterByName(name, url) {
                 });
             },
             setActiveProperty: function setActiveProperty(propName) {
+                console.log(propName);
                 this.layerProperty.setActivePropertyName.call(this, propName);
                 this.layerProperty.setActivePropertyProps.call(this);
             }
@@ -3280,5 +3305,5 @@ function getParameterByName(name, url) {
     module.exports = namespace['pluginName'];
 })(jQuery, window, document);
 
-},{"../config":1,"chroma-js":2}]},{},[3])(3)
+},{"../config":1,"./helpers/getParameterByName":3,"chroma-js":2}]},{},[4])(4)
 });

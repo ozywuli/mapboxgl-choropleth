@@ -1,17 +1,8 @@
 // import {$, jQuery} from 'jquery';
 import config from '../config';
 import chroma from 'chroma-js';
+import getParameterByName from './helpers/getParameterByName';
 
-
-function getParameterByName(name, url) {
-    if (!url) url = window.location.href;
-    name = name.replace(/[\[\]]/g, "\\$&");
-    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-        results = regex.exec(url);
-    if (!results) return null;
-    if (!results[2]) return '';
-    return decodeURIComponent(results[2].replace(/\+/g, " "));
-}
 
 ;(function( $, window, document, undefined ) {
     /**
@@ -184,9 +175,14 @@ function getParameterByName(name, url) {
          */
         displayInitialLayer() {
             console.log('displayInitialLayer');
-            this.revealActiveLayer(this.activeLayer);
-            this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, this.activeLayer).properties[0].property);
-            this.addMapLegend();
+
+            if (getParameterByName('property')) {
+                this.layerProperty.setActiveProperty.call(this, getParameterByName('property'));
+            } else {
+                this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, this.activeLayer).properties[0].property);
+            }
+
+            this.updateLayer(this.activeLayer, this.activeLayerPropName);
         },
 
         /**
@@ -235,7 +231,7 @@ function getParameterByName(name, url) {
             if (getParameterByName('layer')) {
                 this.layerProperty.setActiveLayer.call(this, getParameterByName('layer', null));
             } else {
-
+                this.layerProperty.setActiveLayer.call(this, this.options.mapConfig.layers[0].id)
             }
 
 
@@ -314,7 +310,10 @@ function getParameterByName(name, url) {
          * Show user selected layer (active layer)
          */
         revealActiveLayer(activeLayer) {
+            console.log('method: revealActiveLayer');
+
             this.activeLayer = activeLayer;
+            console.log(this.activeLayer);
 
             // Hide unclicked layers
             this.customLayers.forEach((layer) => {
@@ -336,10 +335,13 @@ function getParameterByName(name, url) {
          * Update layer
          */
         updateLayer(layer, propertyName) {
-            if (!propertyName) {
-                // Reveal this layer
-                this.revealActiveLayer(layer);
+            console.log('method: updateLayer');
 
+            // Reveal this layer
+            this.revealActiveLayer(layer);
+
+            // if property isn't passed in
+            if (!propertyName) {
                 // Set active properties
                 this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, layer).properties[0].property)
             } else {
@@ -392,7 +394,7 @@ function getParameterByName(name, url) {
         },
 
         /**
-         * 
+         * The layer property object
          */
         layerProperty: {
             setActiveLayer(layer) {
@@ -407,9 +409,6 @@ function getParameterByName(name, url) {
                 });
                 return foundLayer;
             },
-            findPropertyProps() {
-
-            },
             setActivePropertyName(propName) {
                 this.activeLayerPropName = propName;
             },
@@ -421,6 +420,7 @@ function getParameterByName(name, url) {
                 });
             },
             setActiveProperty(propName) {
+                console.log(propName);
                 this.layerProperty.setActivePropertyName.call(this, propName);
                 this.layerProperty.setActivePropertyProps.call(this);
             }
