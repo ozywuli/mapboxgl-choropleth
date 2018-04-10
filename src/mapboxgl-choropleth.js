@@ -353,7 +353,7 @@ import getParameterByName from './helpers/getParameterByName';
             // if property isn't passed in
             if (!propertyName) {
                 // Set active properties
-                this.mapLayer.setActiveProperty.call(this, this.mapLayer.findLayer.call(this, layer).properties[0].property)
+                this.mapLayer.setActiveProperty.call(this, this.mapLayer.findLayer.call(this, this.activeLayer).properties[0].property)
             } else {
                 this.mapLayer.findLayer.call(this, this.activeLayer).properties.map((property) => {
                     if (property.property === propertyName) {
