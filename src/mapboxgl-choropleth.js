@@ -62,6 +62,7 @@ import getParameterByName from './helpers/getParameterByName';
      * Prototype
      */
     
+
     namespace['pluginName'].prototype = {
         /*------------------------------------*\
           STATE
@@ -69,7 +70,7 @@ import getParameterByName from './helpers/getParameterByName';
         map: null,
         activeLayer: null,
         activeLayerPropName: null,
-        activeLayerProps: null,
+        activeLayerPropProperties: null,
         customLayers: [],
         $mapContainer: $('.mapboxgl-choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
@@ -82,8 +83,9 @@ import getParameterByName from './helpers/getParameterByName';
             this.instantiateMap();
         }, // init()
 
+
         /**
-         * Instantiate mapbox
+         * Instantiate mapbox map
          */
         instantiateMap() {
             // Map instance
@@ -103,8 +105,9 @@ import getParameterByName from './helpers/getParameterByName';
             }).then(this.afterMapLoaded.bind(this, this.map));
         }, // instantiateMap()
 
+
         /**
-         * 
+         * When the map is loaded
          */
         mapLoaded(resolve) {
             // Resolve map load promise
@@ -112,25 +115,26 @@ import getParameterByName from './helpers/getParameterByName';
 
             // Add map layers
             this.addMapLayers();
-        },
+        }, /// mapLoaded()
+
 
         /**
-         * 
+         * After the map is laoded
          */
         afterMapLoaded(map) {
             this.initQueryParamListener();
-            this.displayInitialLayer();
             this.initFeatureClickEvent();
-            this.initRevealActivelayerEvent();
+            this.initLayerEvent();
             this.initPropEvent();
             this.hoverEvent();
-        },
+        }, // afterMapLoaded()
+
 
         /**
-         * 
+         * Add Mapbox map layers
          */
         addMapLayers() {
-            console.log('addMapLayers');
+            // console.log('method: addMapLayers');
             let layers = this.map.getStyle().layers;
             // Find the index of the first symbol layer in the map style
             let firstSymbolId;
@@ -168,22 +172,63 @@ import getParameterByName from './helpers/getParameterByName';
                 // Store all the custom layers
                 this.customLayers.push(layer.id);
             });
-        },
+        }, // addMapLayers
+
 
         /**
-         * 
+         * Listen to query parameter changes
          */
-        displayInitialLayer() {
-            console.log('displayInitialLayer');
+        initQueryParamListener() {
+            // console.log('method: initQueryParamListener');
 
-            if (getParameterByName('property')) {
-                this.layerProperty.setActiveProperty.call(this, getParameterByName('property'));
-            } else {
-                this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, this.activeLayer).properties[0].property);
+            this.checkQueryParam();
+
+            window.onpopstate = history.onpushstate = (event) => {
+                this.checkQueryParam();
             }
 
-            this.updateLayer(this.activeLayer, this.activeLayerPropName);
-        },
+        }, // initQueryParamListener()
+
+
+        /**
+         * Check query param
+         */
+        checkQueryParam() {
+            let paramLayer = getParameterByName('layer');
+            let paramProperty = getParameterByName('property');
+
+            if (paramLayer) {
+                if (paramProperty) {
+                    this.updateLayer(paramLayer, paramProperty);
+                } else {
+                    this.updateLayer(paramLayer);
+                }
+            } else {
+                this.updateLayer();
+            }
+        }, // checkQueryParam()
+
+
+        /**
+         * Update query param
+         */
+        updateQueryParam(layer, property) {
+            // Get the layer name from the URL
+            let queryString = `layer=${layer}`;
+
+            // Get the property name (if it exists) from the URL
+            if (property) {
+                queryString += `&property=${property}`;
+            }
+
+            // Construct the new URL from the query string
+            let pageUrl = '?' + queryString;
+            window.history.pushState('', '', pageUrl);
+
+            // Update layer
+            this.updateLayer(layer, property);
+        }, // updateQueryParam()
+
 
         /**
          * Preprocess colors to add a color scale
@@ -200,10 +245,11 @@ import getParameterByName from './helpers/getParameterByName';
 
 
             });
-        },
+        }, // createColorScales()
+
 
         /**
-         * 
+         * Set up the fill for layers
          */
         paintFill(prop) {
             let fillColorArray = [
@@ -220,54 +266,8 @@ import getParameterByName from './helpers/getParameterByName';
             })
 
             return fillColorArray;
-        },
+        }, // paintFill()
 
-        /**
-         * Listen to query parameter changes
-         */
-        initQueryParamListener() {
-            console.log('initQueryParamListener');
-
-            if (getParameterByName('layer')) {
-                this.layerProperty.setActiveLayer.call(this, getParameterByName('layer', null));
-            } else {
-                this.layerProperty.setActiveLayer.call(this, this.options.mapConfig.layers[0].id)
-            }
-
-
-            window.onpopstate = history.onpushstate = (event) => {
-                let layer = getParameterByName('layer');
-                let property;
-                if (getParameterByName('property')) {
-                    property = getParameterByName('property');
-                }
-                console.log(property);
-                this.updateLayer(layer, property);
-            }
-
-        },
-
-        /**
-         * Update query param
-         */
-        updateQueryParam(layer, property) {
-            console.log(layer);
-
-            // Get the layer name from the URL
-            let queryString = `layer=${layer}`;
-
-            // Get the property name (if it exists) from the URL
-            if (property) {
-                queryString += `&property=${property}`;
-            }
-
-            // Construct the new URL from the query string
-            let pageUrl = '?' + queryString;
-            window.history.pushState('', '', pageUrl);
-
-            // Update layer
-            this.updateLayer(layer, property);
-        },
 
         /**
          * Initialize click events for all features
@@ -277,26 +277,29 @@ import getParameterByName from './helpers/getParameterByName';
             this.customLayers.forEach((layer) => {
                 this.map.on('click', layer, this.featureClickEventHandler.bind(this));
             });
-        },
+        }, // initFeatureClickEvent
+
 
         /**
          * Handles the click event for features
          */
         featureClickEventHandler(event) {
             this.options.featureClickEventCallback(event);
-        },
+        }, // featureClickEventHandler
+
 
         /**
          * Click event for layer reveals/hide
          */
-        initRevealActivelayerEvent() {
-            $('.js-choropleth-layer-anchor').on('click', this.revealActiveLayerEventHandler.bind(this))
-        },
+        initLayerEvent() {
+            $('.js-choropleth-layer-anchor').on('click', this.layerEventHandler.bind(this))
+        }, // initLayerEvent
+
 
         /**
          * Handles the anchor event for showing/revealing layers
          */
-        revealActiveLayerEventHandler(event) {
+        layerEventHandler(event) {
             event.preventDefault();
             event.stopPropagation();
 
@@ -304,16 +307,16 @@ import getParameterByName from './helpers/getParameterByName';
             let clickedLayer = $(event.currentTarget).attr('data-layer');
 
             this.updateQueryParam(clickedLayer);
-        },
+        }, // layerEventHandler()
+
 
         /**
          * Show user selected layer (active layer)
          */
         revealActiveLayer(activeLayer) {
-            console.log('method: revealActiveLayer');
+            // console.log('method: revealActiveLayer');
 
-            this.activeLayer = activeLayer;
-            console.log(this.activeLayer);
+            this.mapLayer.setActiveLayer.call(this, activeLayer);
 
             // Hide unclicked layers
             this.customLayers.forEach((layer) => {
@@ -329,7 +332,8 @@ import getParameterByName from './helpers/getParameterByName';
             if (visibility !== 'visible') {
                 this.map.setLayoutProperty(activeLayer, 'visibility', 'visible');
             }
-        },
+        }, // revealActiveLayer
+
 
         /**
          * Update layer
@@ -337,26 +341,32 @@ import getParameterByName from './helpers/getParameterByName';
         updateLayer(layer, propertyName) {
             console.log('method: updateLayer');
 
-            // Reveal this layer
-            this.revealActiveLayer(layer);
+            if (layer) {
+                // Reveal this layer
+                this.revealActiveLayer(layer);
+            } else {
+                // Reveal this layer
+                this.revealActiveLayer(this.options.mapConfig.layers[0].id);
+            }
+
 
             // if property isn't passed in
             if (!propertyName) {
                 // Set active properties
-                this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, layer).properties[0].property)
+                this.mapLayer.setActiveProperty.call(this, this.mapLayer.findLayer.call(this, layer).properties[0].property)
             } else {
-                this.layerProperty.findLayer.call(this, this.activeLayer).properties.map((property) => {
+                this.mapLayer.findLayer.call(this, this.activeLayer).properties.map((property) => {
                     if (property.property === propertyName) {
                         this.map.setPaintProperty(this.activeLayer, 'fill-color', this.paintFill(property));
-                        this.layerProperty.setActiveProperty.call(this, propertyName);
+                        this.mapLayer.setActiveProperty.call(this, propertyName);
                     }
                 });
             }
 
-
             // Update map legend
             this.addMapLegend();
-        },
+        }, // updateLayer()
+
 
         /**
          * Add a hover event for polygons
@@ -370,7 +380,7 @@ import getParameterByName from './helpers/getParameterByName';
                     this.map.getCanvas().style.cursor = '';
                 });
             })
-        },
+        }, // hoverEvent()
 
 
         /**
@@ -378,7 +388,8 @@ import getParameterByName from './helpers/getParameterByName';
          */
         initPropEvent() {
             $('.js-choropleth-prop-anchor').on('click', this.propEventHandler.bind(this));
-        },
+        }, // initPropEvent()
+
 
         /**
          * Handles the event for layer properties (when users select a property to show on the map)
@@ -391,12 +402,12 @@ import getParameterByName from './helpers/getParameterByName';
             let clickedProp = $(event.currentTarget).attr('data-prop');
 
             this.updateQueryParam(clickedLayer, clickedProp);
-        },
+        }, // propEventHandler
 
         /**
          * The layer property object
          */
-        layerProperty: {
+        mapLayer: {
             setActiveLayer(layer) {
                 this.activeLayer = layer;
             },
@@ -409,37 +420,37 @@ import getParameterByName from './helpers/getParameterByName';
                 });
                 return foundLayer;
             },
-            setActivePropertyName(propName) {
+            setActivePropName(propName) {
                 this.activeLayerPropName = propName;
             },
-            setActivePropertyProps() {
-                this.layerProperty.findLayer.call(this, this.activeLayer).properties.map((property) => {
+            setActivePropProperties() {
+                this.mapLayer.findLayer.call(this, this.activeLayer).properties.map((property) => {
                     if (property.property === this.activeLayerPropName) {
-                        this.activeLayerProps = property;
+                        this.activeLayerPropProperties = property;
                     }                    
                 });
             },
             setActiveProperty(propName) {
-                console.log(propName);
-                this.layerProperty.setActivePropertyName.call(this, propName);
-                this.layerProperty.setActivePropertyProps.call(this);
+                this.mapLayer.setActivePropName.call(this, propName);
+                this.mapLayer.setActivePropProperties.call(this);
             }
-        },
+        }, // maplayer
 
 
         /**
          * Add legends to the map
          */
         addMapLegend() {
+            // console.log('method: addMapLegend');
             // console.log(this.activeLayerPropName);
-            // console.log(this.activeLayerProps);
+            // console.log(this.activeLayerPropProperties);
 
             if ($(`.${this.mapLegend}`).length) {
                 $(`.${this.mapLegend}`).remove();
             }
 
-            let colorScale = this.activeLayerProps.colorScale;
-            let steps = this.activeLayerProps.step;
+            let colorScale = this.activeLayerPropProperties.colorScale;
+            let steps = this.activeLayerPropProperties.step;
 
             // Reverse the legend
             if (this.options.mapConfig.legendReverse) {
@@ -485,9 +496,9 @@ import getParameterByName from './helpers/getParameterByName';
                     </div>
                 </div>
             `)
-        }
+        } // addMapLegend()
         
-    }
+    } // prototype
 
     // console.log($.fn);
 

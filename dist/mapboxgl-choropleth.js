@@ -2864,7 +2864,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         map: null,
         activeLayer: null,
         activeLayerPropName: null,
-        activeLayerProps: null,
+        activeLayerPropProperties: null,
         customLayers: [],
         $mapContainer: $('.mapboxgl-choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
@@ -2878,8 +2878,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         },
         // init()
 
+
         /**
-         * Instantiate mapbox
+         * Instantiate mapbox map
          */
         instantiateMap: function instantiateMap() {
             var _this = this;
@@ -2902,8 +2903,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         },
         // instantiateMap()
 
+
         /**
-         * 
+         * When the map is loaded
          */
         mapLoaded: function mapLoaded(resolve) {
             // Resolve map load promise
@@ -2912,28 +2914,29 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // Add map layers
             this.addMapLayers();
         },
+        /// mapLoaded()
 
 
         /**
-         * 
+         * After the map is laoded
          */
         afterMapLoaded: function afterMapLoaded(map) {
             this.initQueryParamListener();
-            this.displayInitialLayer();
             this.initFeatureClickEvent();
-            this.initRevealActivelayerEvent();
+            this.initLayerEvent();
             this.initPropEvent();
             this.hoverEvent();
         },
+        // afterMapLoaded()
 
 
         /**
-         * 
+         * Add Mapbox map layers
          */
         addMapLayers: function addMapLayers() {
             var _this2 = this;
 
-            console.log('addMapLayers');
+            // console.log('method: addMapLayers');
             var layers = this.map.getStyle().layers;
             // Find the index of the first symbol layer in the map style
             var firstSymbolId = void 0;
@@ -2972,22 +2975,66 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 _this2.customLayers.push(layer.id);
             });
         },
+        // addMapLayers
 
 
         /**
-         * 
+         * Listen to query parameter changes
          */
-        displayInitialLayer: function displayInitialLayer() {
-            console.log('displayInitialLayer');
+        initQueryParamListener: function initQueryParamListener() {
+            var _this3 = this;
 
-            if ((0, _getParameterByName2.default)('property')) {
-                this.layerProperty.setActiveProperty.call(this, (0, _getParameterByName2.default)('property'));
+            // console.log('method: initQueryParamListener');
+
+            this.checkQueryParam();
+
+            window.onpopstate = history.onpushstate = function (event) {
+                _this3.checkQueryParam();
+            };
+        },
+        // initQueryParamListener()
+
+
+        /**
+         * Check query param
+         */
+        checkQueryParam: function checkQueryParam() {
+            var paramLayer = (0, _getParameterByName2.default)('layer');
+            var paramProperty = (0, _getParameterByName2.default)('property');
+
+            if (paramLayer) {
+                if (paramProperty) {
+                    this.updateLayer(paramLayer, paramProperty);
+                } else {
+                    this.updateLayer(paramLayer);
+                }
             } else {
-                this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, this.activeLayer).properties[0].property);
+                this.updateLayer();
+            }
+        },
+        // checkQueryParam()
+
+
+        /**
+         * Update query param
+         */
+        updateQueryParam: function updateQueryParam(layer, property) {
+            // Get the layer name from the URL
+            var queryString = 'layer=' + layer;
+
+            // Get the property name (if it exists) from the URL
+            if (property) {
+                queryString += '&property=' + property;
             }
 
-            this.updateLayer(this.activeLayer, this.activeLayerPropName);
+            // Construct the new URL from the query string
+            var pageUrl = '?' + queryString;
+            window.history.pushState('', '', pageUrl);
+
+            // Update layer
+            this.updateLayer(layer, property);
         },
+        // updateQueryParam()
 
 
         /**
@@ -3004,10 +3051,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 });
             });
         },
+        // createColorScales()
 
 
         /**
-         * 
+         * Set up the fill for layers
          */
         paintFill: function paintFill(prop) {
             var fillColorArray = ['step', ['get', prop.property]];
@@ -3022,55 +3070,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             return fillColorArray;
         },
-
-
-        /**
-         * Listen to query parameter changes
-         */
-        initQueryParamListener: function initQueryParamListener() {
-            var _this3 = this;
-
-            console.log('initQueryParamListener');
-
-            if ((0, _getParameterByName2.default)('layer')) {
-                this.layerProperty.setActiveLayer.call(this, (0, _getParameterByName2.default)('layer', null));
-            } else {
-                this.layerProperty.setActiveLayer.call(this, this.options.mapConfig.layers[0].id);
-            }
-
-            window.onpopstate = history.onpushstate = function (event) {
-                var layer = (0, _getParameterByName2.default)('layer');
-                var property = void 0;
-                if ((0, _getParameterByName2.default)('property')) {
-                    property = (0, _getParameterByName2.default)('property');
-                }
-                console.log(property);
-                _this3.updateLayer(layer, property);
-            };
-        },
-
-
-        /**
-         * Update query param
-         */
-        updateQueryParam: function updateQueryParam(layer, property) {
-            console.log(layer);
-
-            // Get the layer name from the URL
-            var queryString = 'layer=' + layer;
-
-            // Get the property name (if it exists) from the URL
-            if (property) {
-                queryString += '&property=' + property;
-            }
-
-            // Construct the new URL from the query string
-            var pageUrl = '?' + queryString;
-            window.history.pushState('', '', pageUrl);
-
-            // Update layer
-            this.updateLayer(layer, property);
-        },
+        // paintFill()
 
 
         /**
@@ -3084,6 +3084,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 _this4.map.on('click', layer, _this4.featureClickEventHandler.bind(_this4));
             });
         },
+        // initFeatureClickEvent
 
 
         /**
@@ -3092,20 +3093,22 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         featureClickEventHandler: function featureClickEventHandler(event) {
             this.options.featureClickEventCallback(event);
         },
+        // featureClickEventHandler
 
 
         /**
          * Click event for layer reveals/hide
          */
-        initRevealActivelayerEvent: function initRevealActivelayerEvent() {
-            $('.js-choropleth-layer-anchor').on('click', this.revealActiveLayerEventHandler.bind(this));
+        initLayerEvent: function initLayerEvent() {
+            $('.js-choropleth-layer-anchor').on('click', this.layerEventHandler.bind(this));
         },
+        // initLayerEvent
 
 
         /**
          * Handles the anchor event for showing/revealing layers
          */
-        revealActiveLayerEventHandler: function revealActiveLayerEventHandler(event) {
+        layerEventHandler: function layerEventHandler(event) {
             event.preventDefault();
             event.stopPropagation();
 
@@ -3114,6 +3117,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             this.updateQueryParam(clickedLayer);
         },
+        // layerEventHandler()
 
 
         /**
@@ -3122,10 +3126,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         revealActiveLayer: function revealActiveLayer(activeLayer) {
             var _this5 = this;
 
-            console.log('method: revealActiveLayer');
+            // console.log('method: revealActiveLayer');
 
-            this.activeLayer = activeLayer;
-            console.log(this.activeLayer);
+            this.mapLayer.setActiveLayer.call(this, activeLayer);
 
             // Hide unclicked layers
             this.customLayers.forEach(function (layer) {
@@ -3142,6 +3145,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 this.map.setLayoutProperty(activeLayer, 'visibility', 'visible');
             }
         },
+        // revealActiveLayer
 
 
         /**
@@ -3152,18 +3156,23 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             console.log('method: updateLayer');
 
-            // Reveal this layer
-            this.revealActiveLayer(layer);
+            if (layer) {
+                // Reveal this layer
+                this.revealActiveLayer(layer);
+            } else {
+                // Reveal this layer
+                this.revealActiveLayer(this.options.mapConfig.layers[0].id);
+            }
 
             // if property isn't passed in
             if (!propertyName) {
                 // Set active properties
-                this.layerProperty.setActiveProperty.call(this, this.layerProperty.findLayer.call(this, layer).properties[0].property);
+                this.mapLayer.setActiveProperty.call(this, this.mapLayer.findLayer.call(this, layer).properties[0].property);
             } else {
-                this.layerProperty.findLayer.call(this, this.activeLayer).properties.map(function (property) {
+                this.mapLayer.findLayer.call(this, this.activeLayer).properties.map(function (property) {
                     if (property.property === propertyName) {
                         _this6.map.setPaintProperty(_this6.activeLayer, 'fill-color', _this6.paintFill(property));
-                        _this6.layerProperty.setActiveProperty.call(_this6, propertyName);
+                        _this6.mapLayer.setActiveProperty.call(_this6, propertyName);
                     }
                 });
             }
@@ -3171,6 +3180,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // Update map legend
             this.addMapLegend();
         },
+        // updateLayer()
 
 
         /**
@@ -3188,6 +3198,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 });
             });
         },
+        // hoverEvent()
 
 
         /**
@@ -3196,6 +3207,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         initPropEvent: function initPropEvent() {
             $('.js-choropleth-prop-anchor').on('click', this.propEventHandler.bind(this));
         },
+        // initPropEvent()
 
 
         /**
@@ -3210,12 +3222,12 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             this.updateQueryParam(clickedLayer, clickedProp);
         },
-
+        // propEventHandler
 
         /**
          * The layer property object
          */
-        layerProperty: {
+        mapLayer: {
             setActiveLayer: function setActiveLayer(layer) {
                 this.activeLayer = layer;
             },
@@ -3228,24 +3240,24 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 });
                 return foundLayer;
             },
-            setActivePropertyName: function setActivePropertyName(propName) {
+            setActivePropName: function setActivePropName(propName) {
                 this.activeLayerPropName = propName;
             },
-            setActivePropertyProps: function setActivePropertyProps() {
+            setActivePropProperties: function setActivePropProperties() {
                 var _this8 = this;
 
-                this.layerProperty.findLayer.call(this, this.activeLayer).properties.map(function (property) {
+                this.mapLayer.findLayer.call(this, this.activeLayer).properties.map(function (property) {
                     if (property.property === _this8.activeLayerPropName) {
-                        _this8.activeLayerProps = property;
+                        _this8.activeLayerPropProperties = property;
                     }
                 });
             },
             setActiveProperty: function setActiveProperty(propName) {
-                console.log(propName);
-                this.layerProperty.setActivePropertyName.call(this, propName);
-                this.layerProperty.setActivePropertyProps.call(this);
+                this.mapLayer.setActivePropName.call(this, propName);
+                this.mapLayer.setActivePropProperties.call(this);
             }
-        },
+        }, // maplayer
+
 
         /**
          * Add legends to the map
@@ -3253,15 +3265,16 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         addMapLegend: function addMapLegend() {
             var _this9 = this;
 
+            // console.log('method: addMapLegend');
             // console.log(this.activeLayerPropName);
-            // console.log(this.activeLayerProps);
+            // console.log(this.activeLayerPropProperties);
 
             if ($('.' + this.mapLegend).length) {
                 $('.' + this.mapLegend).remove();
             }
 
-            var colorScale = this.activeLayerProps.colorScale;
-            var steps = this.activeLayerProps.step;
+            var colorScale = this.activeLayerPropProperties.colorScale;
+            var steps = this.activeLayerPropProperties.step;
 
             // Reverse the legend
             if (this.options.mapConfig.legendReverse) {
@@ -3293,8 +3306,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             });
 
             this.$mapContainer.append('\n                <div class="' + this.mapLegend + '">\n                    <div class="mapboxgl-choropleth-legend__wrapper">\n                        ' + rows + '\n                    </div>\n                </div>\n            ');
-        }
-    };
+        } // addMapLegend()
+
+    }; // prototype
 
     // console.log($.fn);
 
