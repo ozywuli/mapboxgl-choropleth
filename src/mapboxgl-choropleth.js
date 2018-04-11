@@ -35,7 +35,11 @@ import getParameterByName from './helpers/getParameterByName';
 
         featureClickEventCallback(event) {
 
-        }
+        },
+
+        updateLayerEnd(paramLayer, paramProperty) {
+            console.log(paramLayer);
+        },
     };
 
     /**
@@ -127,8 +131,21 @@ import getParameterByName from './helpers/getParameterByName';
             this.initLayerEvent();
             this.initPropEvent();
             this.hoverEvent();
+
+            // this.test().consoler();
         }, // afterMapLoaded()
 
+        // test() {
+        //     let consoler = () => {
+        //         console.log(this);
+        //     }
+
+        //     return {
+        //         consoler: () => {
+        //             consoler();
+        //         }
+        //     }
+        // },
 
         /**
          * Add Mapbox map layers
@@ -227,6 +244,8 @@ import getParameterByName from './helpers/getParameterByName';
 
             // Update layer
             this.updateLayer(layer, property);
+
+
         }, // updateQueryParam()
 
 
@@ -316,7 +335,7 @@ import getParameterByName from './helpers/getParameterByName';
         revealActiveLayer(activeLayer) {
             // console.log('method: revealActiveLayer');
 
-            this.mapLayer.setActiveLayer.call(this, activeLayer);
+            this.setActiveLayer(activeLayer);
 
             // Hide unclicked layers
             this.customLayers.forEach((layer) => {
@@ -339,7 +358,7 @@ import getParameterByName from './helpers/getParameterByName';
          * Update layer
          */
         updateLayer(layer, propertyName) {
-            console.log('method: updateLayer');
+            // console.log('method: updateLayer');
 
             if (layer) {
                 // Reveal this layer
@@ -349,22 +368,28 @@ import getParameterByName from './helpers/getParameterByName';
                 this.revealActiveLayer(this.options.mapConfig.layers[0].id);
             }
 
-
             // if property isn't passed in
             if (!propertyName) {
                 // Set active properties
-                this.mapLayer.setActiveProperty.call(this, this.mapLayer.findLayer.call(this, this.activeLayer).properties[0].property)
+                this.setActiveProperty(this.findLayer(this.activeLayer).properties[0].property);
+
+                // set property name to the default value (the first object)
+                propertyName = this.findLayer(this.activeLayer).properties[0].property;
             } else {
-                this.mapLayer.findLayer.call(this, this.activeLayer).properties.map((property) => {
+                this.findLayer(this.activeLayer).properties.map((property) => {
                     if (property.property === propertyName) {
                         this.map.setPaintProperty(this.activeLayer, 'fill-color', this.paintFill(property));
-                        this.mapLayer.setActiveProperty.call(this, propertyName);
+                        this.setActiveProperty(propertyName);
                     }
                 });
             }
 
+
             // Update map legend
             this.addMapLegend();
+
+            // Update layer end
+            this.options.updateLayerEnd(this.activeLayer, propertyName);
         }, // updateLayer()
 
 
@@ -404,38 +429,52 @@ import getParameterByName from './helpers/getParameterByName';
             this.updateQueryParam(clickedLayer, clickedProp);
         }, // propEventHandler
 
-        /**
-         * The layer property object
-         */
-        mapLayer: {
-            setActiveLayer(layer) {
-                this.activeLayer = layer;
-            },
-            findLayer(layerName) {
-                let foundLayer;
-                this.options.mapConfig.layers.map((layer) => {
-                    if (layer.id === layerName) {
-                        foundLayer = layer;
-                    }
-                });
-                return foundLayer;
-            },
-            setActivePropName(propName) {
-                this.activeLayerPropName = propName;
-            },
-            setActivePropProperties() {
-                this.mapLayer.findLayer.call(this, this.activeLayer).properties.map((property) => {
-                    if (property.property === this.activeLayerPropName) {
-                        this.activeLayerPropProperties = property;
-                    }                    
-                });
-            },
-            setActiveProperty(propName) {
-                this.mapLayer.setActivePropName.call(this, propName);
-                this.mapLayer.setActivePropProperties.call(this);
-            }
-        }, // maplayer
 
+        /**
+         * Set active layer
+         */
+        setActiveLayer(layer) {
+            this.activeLayer = layer;
+        },
+
+        /**
+         * Find layer
+         */
+        findLayer(layerName) {
+            let foundLayer;
+            this.options.mapConfig.layers.map((layer) => {
+                if (layer.id === layerName) {
+                    foundLayer = layer;
+                }
+            });
+            return foundLayer;
+        },
+
+        /**
+         * 
+         */
+        setActivePropName(propName) {
+            this.activeLayerPropName = propName;
+        },
+
+        /**
+         * 
+         */
+        setActivePropProperties() {
+            this.findLayer(this.activeLayer).properties.map((property) => {
+                if (property.property === this.activeLayerPropName) {
+                    this.activeLayerPropProperties = property;
+                }                    
+            });
+        },
+
+        /**
+         * 
+         */
+        setActiveProperty(propName) {
+            this.setActivePropName(propName);
+            this.setActivePropProperties(this);
+        },
 
         /**
          * Add legends to the map

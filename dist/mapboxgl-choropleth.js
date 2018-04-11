@@ -1,4 +1,4 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Choropleth = f()}})(function(){var define,module,exports;return (function(){function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s}return e})()({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Choropleth = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2832,7 +2832,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             legendReverse: true
         },
 
-        featureClickEventCallback: function featureClickEventCallback(event) {}
+        featureClickEventCallback: function featureClickEventCallback(event) {},
+        updateLayerEnd: function updateLayerEnd(paramLayer, paramProperty) {
+            console.log(paramLayer);
+        }
     };
 
     /**
@@ -2926,9 +2929,22 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             this.initLayerEvent();
             this.initPropEvent();
             this.hoverEvent();
+
+            // this.test().consoler();
         },
         // afterMapLoaded()
 
+        // test() {
+        //     let consoler = () => {
+        //         console.log(this);
+        //     }
+
+        //     return {
+        //         consoler: () => {
+        //             consoler();
+        //         }
+        //     }
+        // },
 
         /**
          * Add Mapbox map layers
@@ -3128,7 +3144,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             // console.log('method: revealActiveLayer');
 
-            this.mapLayer.setActiveLayer.call(this, activeLayer);
+            this.setActiveLayer(activeLayer);
 
             // Hide unclicked layers
             this.customLayers.forEach(function (layer) {
@@ -3154,7 +3170,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         updateLayer: function updateLayer(layer, propertyName) {
             var _this6 = this;
 
-            console.log('method: updateLayer');
+            // console.log('method: updateLayer');
 
             if (layer) {
                 // Reveal this layer
@@ -3167,18 +3183,24 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // if property isn't passed in
             if (!propertyName) {
                 // Set active properties
-                this.mapLayer.setActiveProperty.call(this, this.mapLayer.findLayer.call(this, this.activeLayer).properties[0].property);
+                this.setActiveProperty(this.findLayer(this.activeLayer).properties[0].property);
+
+                // set property name to the default value (the first object)
+                propertyName = this.findLayer(this.activeLayer).properties[0].property;
             } else {
-                this.mapLayer.findLayer.call(this, this.activeLayer).properties.map(function (property) {
+                this.findLayer(this.activeLayer).properties.map(function (property) {
                     if (property.property === propertyName) {
                         _this6.map.setPaintProperty(_this6.activeLayer, 'fill-color', _this6.paintFill(property));
-                        _this6.mapLayer.setActiveProperty.call(_this6, propertyName);
+                        _this6.setActiveProperty(propertyName);
                     }
                 });
             }
 
             // Update map legend
             this.addMapLegend();
+
+            // Update layer end
+            this.options.updateLayerEnd(this.activeLayer, propertyName);
         },
         // updateLayer()
 
@@ -3224,39 +3246,58 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         },
         // propEventHandler
 
-        /**
-         * The layer property object
-         */
-        mapLayer: {
-            setActiveLayer: function setActiveLayer(layer) {
-                this.activeLayer = layer;
-            },
-            findLayer: function findLayer(layerName) {
-                var foundLayer = void 0;
-                this.options.mapConfig.layers.map(function (layer) {
-                    if (layer.id === layerName) {
-                        foundLayer = layer;
-                    }
-                });
-                return foundLayer;
-            },
-            setActivePropName: function setActivePropName(propName) {
-                this.activeLayerPropName = propName;
-            },
-            setActivePropProperties: function setActivePropProperties() {
-                var _this8 = this;
 
-                this.mapLayer.findLayer.call(this, this.activeLayer).properties.map(function (property) {
-                    if (property.property === _this8.activeLayerPropName) {
-                        _this8.activeLayerPropProperties = property;
-                    }
-                });
-            },
-            setActiveProperty: function setActiveProperty(propName) {
-                this.mapLayer.setActivePropName.call(this, propName);
-                this.mapLayer.setActivePropProperties.call(this);
-            }
-        }, // maplayer
+        /**
+         * Set active layer
+         */
+        setActiveLayer: function setActiveLayer(layer) {
+            this.activeLayer = layer;
+        },
+
+
+        /**
+         * Find layer
+         */
+        findLayer: function findLayer(layerName) {
+            var foundLayer = void 0;
+            this.options.mapConfig.layers.map(function (layer) {
+                if (layer.id === layerName) {
+                    foundLayer = layer;
+                }
+            });
+            return foundLayer;
+        },
+
+
+        /**
+         * 
+         */
+        setActivePropName: function setActivePropName(propName) {
+            this.activeLayerPropName = propName;
+        },
+
+
+        /**
+         * 
+         */
+        setActivePropProperties: function setActivePropProperties() {
+            var _this8 = this;
+
+            this.findLayer(this.activeLayer).properties.map(function (property) {
+                if (property.property === _this8.activeLayerPropName) {
+                    _this8.activeLayerPropProperties = property;
+                }
+            });
+        },
+
+
+        /**
+         * 
+         */
+        setActiveProperty: function setActiveProperty(propName) {
+            this.setActivePropName(propName);
+            this.setActivePropProperties(this);
+        },
 
 
         /**
