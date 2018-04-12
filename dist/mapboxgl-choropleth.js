@@ -2833,9 +2833,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         },
 
         featureClickEventCallback: function featureClickEventCallback(event) {},
-        updateLayerEnd: function updateLayerEnd(paramLayer, paramProperty) {
-            console.log(paramLayer);
-        }
+        updateLayerEnd: function updateLayerEnd(paramLayer, paramProperty) {}
     };
 
     /**
@@ -2871,6 +2869,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         customLayers: [],
         $mapContainer: $('.mapboxgl-choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
+        isMapSizeToggled: false,
 
         /**
          * Init
@@ -2929,22 +2928,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             this.initLayerEvent();
             this.initPropEvent();
             this.hoverEvent();
-
-            // this.test().consoler();
+            this.initEventToggleMapSize();
         },
         // afterMapLoaded()
-
-        // test() {
-        //     let consoler = () => {
-        //         console.log(this);
-        //     }
-
-        //     return {
-        //         consoler: () => {
-        //             consoler();
-        //         }
-        //     }
-        // },
 
         /**
          * Add Mapbox map layers
@@ -3347,8 +3333,34 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             });
 
             this.$mapContainer.append('\n                <div class="' + this.mapLegend + '">\n                    <div class="mapboxgl-choropleth-legend__wrapper">\n                        ' + rows + '\n                    </div>\n                </div>\n            ');
-        } // addMapLegend()
+        },
+        // addMapLegend()
 
+        /**
+         * 
+         */
+        initEventToggleMapSize: function initEventToggleMapSize() {
+            $('.choropleth__toggle-map').on('click', this.toggleMapSize.bind(this));
+        },
+
+
+        /**
+         * 
+         */
+        toggleMapSize: function toggleMapSize(event) {
+            event.preventDefault();
+            console.log(event);
+            if (!this.isMapSizeToggled) {
+                $('.choropleth-map').css('height', '100%');
+                $('.choropleth-wrapper').css('display', 'none');
+                this.isMapSizeToggled = true;
+            } else {
+                $('.choropleth-map, .choropleth-wrapper').removeAttr('style');
+                this.isMapSizeToggled = false;
+            }
+
+            this.map.resize();
+        }
     }; // prototype
 
     // console.log($.fn);

@@ -38,7 +38,7 @@ import getParameterByName from './helpers/getParameterByName';
         },
 
         updateLayerEnd(paramLayer, paramProperty) {
-            console.log(paramLayer);
+            
         },
     };
 
@@ -78,6 +78,7 @@ import getParameterByName from './helpers/getParameterByName';
         customLayers: [],
         $mapContainer: $('.mapboxgl-choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
+        isMapSizeToggled: false,
 
         /**
          * Init
@@ -131,21 +132,8 @@ import getParameterByName from './helpers/getParameterByName';
             this.initLayerEvent();
             this.initPropEvent();
             this.hoverEvent();
-
-            // this.test().consoler();
+            this.initEventToggleMapSize();
         }, // afterMapLoaded()
-
-        // test() {
-        //     let consoler = () => {
-        //         console.log(this);
-        //     }
-
-        //     return {
-        //         consoler: () => {
-        //             consoler();
-        //         }
-        //     }
-        // },
 
         /**
          * Add Mapbox map layers
@@ -535,8 +523,33 @@ import getParameterByName from './helpers/getParameterByName';
                     </div>
                 </div>
             `)
-        } // addMapLegend()
+        }, // addMapLegend()
         
+        /**
+         * 
+         */
+        initEventToggleMapSize() {
+            $('.choropleth__toggle-map').on('click', this.toggleMapSize.bind(this));
+        },
+
+        /**
+         * 
+         */
+        toggleMapSize(event) {
+            event.preventDefault();
+            console.log(event);
+            if (!this.isMapSizeToggled) {
+                $('.choropleth-map').css('height', '100%');
+                $('.choropleth-wrapper').css('display', 'none');
+                this.isMapSizeToggled = true;
+            } else {
+                $('.choropleth-map, .choropleth-wrapper').removeAttr('style');
+                this.isMapSizeToggled = false;
+            }
+
+            this.map.resize();
+        }
+
     } // prototype
 
     // console.log($.fn);

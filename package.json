@@ -24,22 +24,8 @@
     "url": "https://github.com/ozywuli/mapboxgl-choropleth/issues"
   },
   "devDependencies": {
-    "autoprefixer": "^7.2.3",
-    "babel-preset-es2015": "^6.24.1",
-    "babelify": "^7.3.0",
-    "browser-sync": "^2.18.13",
-    "browserify": "^14.5.0",
     "gulp": "^3.9.1",
-    "gulp-postcss": "^7.0.0",
-    "gulp-rename": "^1.2.2",
-    "gulp-sass": "^3.1.0",
-    "gulp-sourcemaps": "^2.6.1",
-    "gulp-uglify": "^3.0.0",
-    "gulp-util": "^3.0.8",
-    "node-notifier": "^5.1.2",
-    "rimraf": "^2.6.2",
-    "vinyl-buffer": "^1.0.0",
-    "vinyl-source-stream": "^1.1.0"
+    "gulp-jumpstart": "0.0.5"
   },
   "dependencies": {
     "chroma-js": "^1.3.6",
