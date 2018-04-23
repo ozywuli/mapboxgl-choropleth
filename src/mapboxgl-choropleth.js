@@ -1,7 +1,8 @@
 // import {$, jQuery} from 'jquery';
 import config from '../config';
 import chroma from 'chroma-js';
-import getParameterByName from './helpers/getParameterByName';
+import getParameterByName from 'woohaus-utility-belt/lib/getParameterByName';
+import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
 
 
 ;(function( $, window, document, undefined ) {
@@ -30,7 +31,13 @@ import getParameterByName from './helpers/getParameterByName';
          * Map configuration
          */
         mapConfig: {
-            legendReverse: true
+            legendReverse: true,
+            featureHover: true,
+            mapSelector: '.js-choropleth-map',
+        },
+
+        featureHoverHandler(event) {
+
         },
 
         featureClickEventCallback(event) {
@@ -76,9 +83,9 @@ import getParameterByName from './helpers/getParameterByName';
         activeLayerPropName: null,
         activeLayerPropProperties: null,
         customLayers: [],
-        $mapContainer: $('.mapboxgl-choropleth-container'),
+        $mapContainer: $('.choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
-        isMapSizeToggled: false,
+        
 
         /**
          * Init
@@ -99,6 +106,9 @@ import getParameterByName from './helpers/getParameterByName';
             mapboxgl.accessToken = config.mapboxAccessToken;
             // Instantiate mapbox
             map = new mapboxgl.Map(this.options.mapboxConfig);
+
+            map.doubleClickZoom.disable();
+            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
             this.map = map;
 
@@ -131,8 +141,6 @@ import getParameterByName from './helpers/getParameterByName';
             this.initFeatureClickEvent();
             this.initLayerEvent();
             this.initPropEvent();
-            this.hoverEvent();
-            this.initEventToggleMapSize();
         }, // afterMapLoaded()
 
         /**
@@ -170,9 +178,70 @@ import getParameterByName from './helpers/getParameterByName';
                     }
                 }, firstSymbolId);
 
-                // this.map.setFilter('countries-layer', ['match', ['get', 'name'], ['Panama', 'Angola'], true, false]);
+                /*------------------------------------*\
+                  Mouse events
+                \*------------------------------------*/
+                let lastFeature;
 
-                this.map.setFilter('countries-layer', ['has', 'density']);
+                this.map.on('mouseenter', layer.id, (event) => {
+                    // turn mouse cursor into a pointer
+                    this.map.getCanvas().style.cursor = 'pointer';
+
+                });
+
+                this.map.on('mouseleave', layer.id, (event) => {
+                    this.map.getCanvas().style.cursor = '';
+
+                    lastFeature = undefined;
+                    $('.mapboxgl-choropleth-info-box').remove();
+                });
+
+                this.map.on('mousemove', layer.id, (event) => {
+                    let currentFeature = this.map.queryRenderedFeatures(event.point)[0];
+
+                    // console.log(currentFeature);
+
+                    // Update the info box only if the hovered element changes
+                    if (currentFeature !== lastFeature) {
+                        // set the lastFeature to the current Feature
+                        lastFeature = currentFeature;
+
+                        // remove any previous info boxes
+                        if ($('.mapboxgl-choropleth-info-box').length) {
+                            $('.mapboxgl-choropleth-info-box').remove();
+                        }       
+
+                        // property info string for the info box
+                        let propString = '';
+
+                        // loop the currentFeature's property object
+                        for (let prop in currentFeature.properties) {
+                            if (prop !== 'name') {
+                                propString += `
+                                    <div class="mapboxgl-choropleth-info-box__property">
+                                        <span class="mapboxgl-choropleth-info-box__property-key">${prop}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${currentFeature.properties[prop]}</span>
+                                    </div>
+                                `;    
+                            }
+                        }                 
+
+                        // append the new info box to map
+                        $(this.options.mapConfig.mapSelector).append(`
+                            <div class="mapboxgl-choropleth-info-box">
+                                <h3 class="mapboxgl-choropleth-info-box__title">${currentFeature.properties.name}</h3>
+                                ${propString}
+                            </div>
+                        `)
+                    }
+
+                    // Reposition the info box based on mouse cursor's position
+                    if ($('.mapboxgl-choropleth-info-box').length) {
+                        $('.mapboxgl-choropleth-info-box').css({
+                            top: `${event.originalEvent.clientY - parseInt($('.mapboxgl-choropleth-info-box').height()) - 32}px`,
+                            left: `${event.originalEvent.clientX}px`
+                        })
+                    }
+                })
 
                 // Store all the custom layers
                 this.customLayers.push(layer.id);
@@ -299,7 +368,7 @@ import getParameterByName from './helpers/getParameterByName';
          * Click event for layer reveals/hide
          */
         initLayerEvent() {
-            $('.js-choropleth-layer-anchor').on('click', this.layerEventHandler.bind(this))
+            $('body').on('click', '.js-choropleth-layer-anchor', this.layerEventHandler.bind(this))
         }, // initLayerEvent
 
 
@@ -348,13 +417,12 @@ import getParameterByName from './helpers/getParameterByName';
         updateLayer(layer, propertyName) {
             // console.log('method: updateLayer');
 
-            if (layer) {
-                // Reveal this layer
-                this.revealActiveLayer(layer);
-            } else {
-                // Reveal this layer
-                this.revealActiveLayer(this.options.mapConfig.layers[0].id);
+            if (!layer) {
+                layer = this.options.mapConfig.layers[0].id;
             }
+
+            // Reveal this layer
+            this.revealActiveLayer(layer);
 
             // if property isn't passed in
             if (!propertyName) {
@@ -372,6 +440,8 @@ import getParameterByName from './helpers/getParameterByName';
                 });
             }
 
+            // Set layer filters
+            this.map.setFilter(layer, ['has', propertyName]);
 
             // Update map legend
             this.addMapLegend();
@@ -381,26 +451,12 @@ import getParameterByName from './helpers/getParameterByName';
         }, // updateLayer()
 
 
-        /**
-         * Add a hover event for polygons
-         */
-        hoverEvent(activeLayer) {
-            this.customLayers.forEach((layer) => {
-                this.map.on('mouseenter', layer, (event) => {
-                    this.map.getCanvas().style.cursor = 'pointer';
-                })
-                this.map.on('mouseleave', layer, (event) => {
-                    this.map.getCanvas().style.cursor = '';
-                });
-            })
-        }, // hoverEvent()
-
 
         /**
          * Init the event handler for layer properties
          */
         initPropEvent() {
-            $('.js-choropleth-prop-anchor').on('click', this.propEventHandler.bind(this));
+            $('body').on('click', '.js-choropleth-prop-anchor', this.propEventHandler.bind(this));
         }, // initPropEvent()
 
 
@@ -496,11 +552,11 @@ import getParameterByName from './helpers/getParameterByName';
                     if (index === 0) {
                         rowTitle = `${steps[index]}+`;
                     } else {
-                        rowTitle = `${steps[index]}–${steps[index - 1]}`;
+                        rowTitle = `${steps[index]} – ${steps[index - 1]}`;
                     }
                 } else {
                     if (index < (stepsLength-1)) {
-                        rowTitle = `${steps[index]}–${steps[index + 1]}`;
+                        rowTitle = `${steps[index]} – ${steps[index + 1]}`;
                     } else {
                         rowTitle = `${steps[index]}+`;
                     }                    
@@ -509,46 +565,26 @@ import getParameterByName from './helpers/getParameterByName';
                 rows += `
                     <div class="mapboxgl-choropleth-legend__row">
                         <div class="mapboxgl-choropleth-legend__fill" style="background-color: ${color};"></div>
-                        <div class="mapboxgl-choropleth-legend__title">
+                        <div class="mapboxgl-choropleth-legend__row-title">
                             ${rowTitle}
                         </div>
                     </div>
                 `;
             })
 
+            let legendTitle = `<h3 class="mapboxgl-choropleth-legend__title">${this.activeLayerPropProperties.title}</h3>`;
+
             this.$mapContainer.append(`
                 <div class="${this.mapLegend}">
                     <div class="mapboxgl-choropleth-legend__wrapper">
+                        ${legendTitle}
                         ${rows}
                     </div>
                 </div>
             `)
         }, // addMapLegend()
         
-        /**
-         * 
-         */
-        initEventToggleMapSize() {
-            $('.choropleth__toggle-map').on('click', this.toggleMapSize.bind(this));
-        },
 
-        /**
-         * 
-         */
-        toggleMapSize(event) {
-            event.preventDefault();
-            console.log(event);
-            if (!this.isMapSizeToggled) {
-                $('.choropleth-map').css('height', '100%');
-                $('.choropleth-wrapper').css('display', 'none');
-                this.isMapSizeToggled = true;
-            } else {
-                $('.choropleth-map, .choropleth-wrapper').removeAttr('style');
-                this.isMapSizeToggled = false;
-            }
-
-            this.map.resize();
-        }
 
     } // prototype
 

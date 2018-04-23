@@ -2773,6 +2773,36 @@ exports.default = config;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+exports.default = function (arr) {
+    var twoTimesSignedArea = 0;
+    var cxTimes6SignedArea = 0;
+    var cyTimes6SignedArea = 0;
+
+    var length = arr.length;
+
+    var x = function x(i) {
+        return arr[i % length][0];
+    };
+    var y = function y(i) {
+        return arr[i % length][1];
+    };
+
+    for (var i = 0; i < arr.length; i++) {
+        var twoSA = x(i) * y(i + 1) - x(i + 1) * y(i);
+        twoTimesSignedArea += twoSA;
+        cxTimes6SignedArea += (x(i) + x(i + 1)) * twoSA;
+        cyTimes6SignedArea += (y(i) + y(i + 1)) * twoSA;
+    }
+    var sixSignedArea = 3 * twoTimesSignedArea;
+    return [cxTimes6SignedArea / sixSignedArea, cyTimes6SignedArea / sixSignedArea];
+};
+},{}],4:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, "\\$&");
@@ -2784,8 +2814,7 @@ function getParameterByName(name, url) {
 }
 
 exports.default = getParameterByName;
-
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 'use strict';
 
 var _config = require('../config');
@@ -2796,14 +2825,18 @@ var _chromaJs = require('chroma-js');
 
 var _chromaJs2 = _interopRequireDefault(_chromaJs);
 
-var _getParameterByName = require('./helpers/getParameterByName');
+var _getParameterByName = require('woohaus-utility-belt/lib/getParameterByName');
 
 var _getParameterByName2 = _interopRequireDefault(_getParameterByName);
 
+var _getCentroid = require('woohaus-utility-belt/lib/getCentroid');
+
+var _getCentroid2 = _interopRequireDefault(_getCentroid);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-; // import {$, jQuery} from 'jquery';
-(function ($, window, document, undefined) {
+// import {$, jQuery} from 'jquery';
+;(function ($, window, document, undefined) {
     /**
      * Plugin namespace
      */
@@ -2829,9 +2862,12 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Map configuration
          */
         mapConfig: {
-            legendReverse: true
+            legendReverse: true,
+            featureHover: true,
+            mapSelector: '.js-choropleth-map'
         },
 
+        featureHoverHandler: function featureHoverHandler(event) {},
         featureClickEventCallback: function featureClickEventCallback(event) {},
         updateLayerEnd: function updateLayerEnd(paramLayer, paramProperty) {}
     };
@@ -2867,9 +2903,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         activeLayerPropName: null,
         activeLayerPropProperties: null,
         customLayers: [],
-        $mapContainer: $('.mapboxgl-choropleth-container'),
+        $mapContainer: $('.choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
-        isMapSizeToggled: false,
 
         /**
          * Init
@@ -2893,6 +2928,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             mapboxgl.accessToken = _config2.default.mapboxAccessToken;
             // Instantiate mapbox
             map = new mapboxgl.Map(this.options.mapboxConfig);
+
+            map.doubleClickZoom.disable();
+            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
             this.map = map;
 
@@ -2927,8 +2965,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             this.initFeatureClickEvent();
             this.initLayerEvent();
             this.initPropEvent();
-            this.hoverEvent();
-            this.initEventToggleMapSize();
         },
         // afterMapLoaded()
 
@@ -2969,9 +3005,60 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                     }
                 }, firstSymbolId);
 
-                // this.map.setFilter('countries-layer', ['match', ['get', 'name'], ['Panama', 'Angola'], true, false]);
+                /*------------------------------------*\
+                  Mouse events
+                \*------------------------------------*/
+                var lastFeature = void 0;
 
-                _this2.map.setFilter('countries-layer', ['has', 'density']);
+                _this2.map.on('mouseenter', layer.id, function (event) {
+                    // turn mouse cursor into a pointer
+                    _this2.map.getCanvas().style.cursor = 'pointer';
+                });
+
+                _this2.map.on('mouseleave', layer.id, function (event) {
+                    _this2.map.getCanvas().style.cursor = '';
+
+                    lastFeature = undefined;
+                    $('.mapboxgl-choropleth-info-box').remove();
+                });
+
+                _this2.map.on('mousemove', layer.id, function (event) {
+                    var currentFeature = _this2.map.queryRenderedFeatures(event.point)[0];
+
+                    // console.log(currentFeature);
+
+                    // Update the info box only if the hovered element changes
+                    if (currentFeature !== lastFeature) {
+                        // set the lastFeature to the current Feature
+                        lastFeature = currentFeature;
+
+                        // remove any previous info boxes
+                        if ($('.mapboxgl-choropleth-info-box').length) {
+                            $('.mapboxgl-choropleth-info-box').remove();
+                        }
+
+                        // property info string for the info box
+                        var propString = '';
+
+                        // loop the currentFeature's property object
+                        for (var prop in currentFeature.properties) {
+                            if (prop !== 'name') {
+                                propString += '\n                                    <div class="mapboxgl-choropleth-info-box__property">\n                                        <span class="mapboxgl-choropleth-info-box__property-key">' + prop + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + currentFeature.properties[prop] + '</span>\n                                    </div>\n                                ';
+                            }
+                        }
+
+                        // append the new info box to map
+                        $(_this2.options.mapConfig.mapSelector).append('\n                            <div class="mapboxgl-choropleth-info-box">\n                                <h3 class="mapboxgl-choropleth-info-box__title">' + currentFeature.properties.name + '</h3>\n                                ' + propString + '\n                            </div>\n                        ');
+                    }
+
+                    // Reposition the info box based on mouse cursor's position
+                    if ($('.mapboxgl-choropleth-info-box').length) {
+                        $('.mapboxgl-choropleth-info-box').css({
+                            top: event.originalEvent.clientY - parseInt($('.mapboxgl-choropleth-info-box').height()) - 32 + 'px',
+                            left: event.originalEvent.clientX + 'px'
+                        });
+                    }
+                });
 
                 // Store all the custom layers
                 _this2.customLayers.push(layer.id);
@@ -3102,7 +3189,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Click event for layer reveals/hide
          */
         initLayerEvent: function initLayerEvent() {
-            $('.js-choropleth-layer-anchor').on('click', this.layerEventHandler.bind(this));
+            $('body').on('click', '.js-choropleth-layer-anchor', this.layerEventHandler.bind(this));
         },
         // initLayerEvent
 
@@ -3158,13 +3245,12 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             // console.log('method: updateLayer');
 
-            if (layer) {
-                // Reveal this layer
-                this.revealActiveLayer(layer);
-            } else {
-                // Reveal this layer
-                this.revealActiveLayer(this.options.mapConfig.layers[0].id);
+            if (!layer) {
+                layer = this.options.mapConfig.layers[0].id;
             }
+
+            // Reveal this layer
+            this.revealActiveLayer(layer);
 
             // if property isn't passed in
             if (!propertyName) {
@@ -3182,6 +3268,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 });
             }
 
+            // Set layer filters
+            this.map.setFilter(layer, ['has', propertyName]);
+
             // Update map legend
             this.addMapLegend();
 
@@ -3192,28 +3281,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 
         /**
-         * Add a hover event for polygons
-         */
-        hoverEvent: function hoverEvent(activeLayer) {
-            var _this7 = this;
-
-            this.customLayers.forEach(function (layer) {
-                _this7.map.on('mouseenter', layer, function (event) {
-                    _this7.map.getCanvas().style.cursor = 'pointer';
-                });
-                _this7.map.on('mouseleave', layer, function (event) {
-                    _this7.map.getCanvas().style.cursor = '';
-                });
-            });
-        },
-        // hoverEvent()
-
-
-        /**
          * Init the event handler for layer properties
          */
         initPropEvent: function initPropEvent() {
-            $('.js-choropleth-prop-anchor').on('click', this.propEventHandler.bind(this));
+            $('body').on('click', '.js-choropleth-prop-anchor', this.propEventHandler.bind(this));
         },
         // initPropEvent()
 
@@ -3267,11 +3338,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * 
          */
         setActivePropProperties: function setActivePropProperties() {
-            var _this8 = this;
+            var _this7 = this;
 
             this.findLayer(this.activeLayer).properties.map(function (property) {
-                if (property.property === _this8.activeLayerPropName) {
-                    _this8.activeLayerPropProperties = property;
+                if (property.property === _this7.activeLayerPropName) {
+                    _this7.activeLayerPropProperties = property;
                 }
             });
         },
@@ -3290,7 +3361,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Add legends to the map
          */
         addMapLegend: function addMapLegend() {
-            var _this9 = this;
+            var _this8 = this;
 
             // console.log('method: addMapLegend');
             // console.log(this.activeLayerPropName);
@@ -3315,51 +3386,26 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             colorScale.forEach(function (color, index) {
                 var rowTitle = void 0;
 
-                if (_this9.options.mapConfig.legendReverse) {
+                if (_this8.options.mapConfig.legendReverse) {
                     if (index === 0) {
                         rowTitle = steps[index] + '+';
                     } else {
-                        rowTitle = steps[index] + '\u2013' + steps[index - 1];
+                        rowTitle = steps[index] + ' \u2013 ' + steps[index - 1];
                     }
                 } else {
                     if (index < stepsLength - 1) {
-                        rowTitle = steps[index] + '\u2013' + steps[index + 1];
+                        rowTitle = steps[index] + ' \u2013 ' + steps[index + 1];
                     } else {
                         rowTitle = steps[index] + '+';
                     }
                 }
 
-                rows += '\n                    <div class="mapboxgl-choropleth-legend__row">\n                        <div class="mapboxgl-choropleth-legend__fill" style="background-color: ' + color + ';"></div>\n                        <div class="mapboxgl-choropleth-legend__title">\n                            ' + rowTitle + '\n                        </div>\n                    </div>\n                ';
+                rows += '\n                    <div class="mapboxgl-choropleth-legend__row">\n                        <div class="mapboxgl-choropleth-legend__fill" style="background-color: ' + color + ';"></div>\n                        <div class="mapboxgl-choropleth-legend__row-title">\n                            ' + rowTitle + '\n                        </div>\n                    </div>\n                ';
             });
 
-            this.$mapContainer.append('\n                <div class="' + this.mapLegend + '">\n                    <div class="mapboxgl-choropleth-legend__wrapper">\n                        ' + rows + '\n                    </div>\n                </div>\n            ');
-        },
-        // addMapLegend()
+            var legendTitle = '<h3 class="mapboxgl-choropleth-legend__title">' + this.activeLayerPropProperties.title + '</h3>';
 
-        /**
-         * 
-         */
-        initEventToggleMapSize: function initEventToggleMapSize() {
-            $('.choropleth__toggle-map').on('click', this.toggleMapSize.bind(this));
-        },
-
-
-        /**
-         * 
-         */
-        toggleMapSize: function toggleMapSize(event) {
-            event.preventDefault();
-            console.log(event);
-            if (!this.isMapSizeToggled) {
-                $('.choropleth-map').css('height', '100%');
-                $('.choropleth-wrapper').css('display', 'none');
-                this.isMapSizeToggled = true;
-            } else {
-                $('.choropleth-map, .choropleth-wrapper').removeAttr('style');
-                this.isMapSizeToggled = false;
-            }
-
-            this.map.resize();
+            this.$mapContainer.append('\n                <div class="' + this.mapLegend + '">\n                    <div class="mapboxgl-choropleth-legend__wrapper">\n                        ' + legendTitle + '\n                        ' + rows + '\n                    </div>\n                </div>\n            ');
         }
     }; // prototype
 
@@ -3372,5 +3418,5 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
     module.exports = namespace['pluginName'];
 })(jQuery, window, document);
 
-},{"../config":1,"./helpers/getParameterByName":3,"chroma-js":2}]},{},[4])(4)
+},{"../config":1,"chroma-js":2,"woohaus-utility-belt/lib/getCentroid":3,"woohaus-utility-belt/lib/getParameterByName":4}]},{},[5])(5)
 });
