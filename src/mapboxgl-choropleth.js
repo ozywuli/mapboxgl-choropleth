@@ -197,77 +197,81 @@ import checkDevice from './utils/check-device';
                 \*------------------------------------*/
                 let lastFeature;
 
-                this.map.on('mouseenter', layer.id, (event) => {
-                    // turn mouse cursor into a pointer
-                    this.map.getCanvas().style.cursor = 'pointer';
+                if (!checkDevice.isTouch()) {
+                    this.map.on('mouseenter', layer.id, (event) => {
+                        // turn mouse cursor into a pointer
+                        this.map.getCanvas().style.cursor = 'pointer';
 
-                });
+                    });
 
-                this.map.on('mouseleave', layer.id, (event) => {
-                    this.map.getCanvas().style.cursor = '';
+                    this.map.on('mouseleave', layer.id, (event) => {
+                        this.map.getCanvas().style.cursor = '';
 
-                    lastFeature = undefined;
-                    $('.mapboxgl-choropleth-info-box').remove();
-                });
+                        lastFeature = undefined;
+                        $('.mapboxgl-choropleth-info-box').remove();
+                    });
 
 
-                this.map.on('mousemove', layer.id, (event) => {
-                    let currentFeature = this.map.queryRenderedFeatures(event.point)[0];
-                    let $mapboxGLInfobox;
-                    let offsetInfobox;
-                    let mapboxGlInfoboxWidth;
+                    this.map.on('mousemove', layer.id, (event) => {
+                        let currentFeature = this.map.queryRenderedFeatures(event.point)[0];
+                        let $mapboxGLInfobox;
+                        let offsetInfobox;
+                        let mapboxGlInfoboxWidth;
 
-                    // Update the info box only if the hovered element changes
-                    if (currentFeature !== lastFeature) {
-                        // set the lastFeature to the current Feature
-                        lastFeature = currentFeature;
+                        // Update the info box only if the hovered element changes
+                        if (currentFeature !== lastFeature) {
+                            // set the lastFeature to the current Feature
+                            lastFeature = currentFeature;
 
-                        // remove any previous info boxes
-                        if ($('.mapboxgl-choropleth-info-box').length) {
-                            $('.mapboxgl-choropleth-info-box').remove();
-                        }       
+                            // remove any previous info boxes
+                            if ($('.mapboxgl-choropleth-info-box').length) {
+                                $('.mapboxgl-choropleth-info-box').remove();
+                            }       
 
-                        // property info string for the info box
-                        let propString = '';
+                            // property info string for the info box
+                            let propString = '';
 
-                        // loop the currentFeature's property object
-                        for (let prop in currentFeature.properties) {
-                            if (prop !== 'name' && prop !== 'keys') {
-                                propString += `
-                                    <div class="mapboxgl-choropleth-info-box__property">
-                                        <span class="mapboxgl-choropleth-info-box__property-key">${prop}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${numberWithCommas(currentFeature.properties[prop])}</span>
-                                    </div>
-                                `;    
-                            }
-                        }                 
+                            // loop the currentFeature's property object
+                            for (let prop in currentFeature.properties) {
+                                if (prop !== 'name' && prop !== 'keys') {
+                                    propString += `
+                                        <div class="mapboxgl-choropleth-info-box__property">
+                                            <span class="mapboxgl-choropleth-info-box__property-key">${prop}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${numberWithCommas(currentFeature.properties[prop])}</span>
+                                        </div>
+                                    `;    
+                                }
+                            }                 
 
-                        // append the new info box to map
-                        $(this.options.mapConfig.mapSelector).append(`
-                            <div class="mapboxgl-choropleth-info-box">
-                                <h3 class="mapboxgl-choropleth-info-box__title">${currentFeature.properties.name}</h3>
-                                ${propString}
-                            </div>
-                        `)
-                    }
+                            // append the new info box to map
+                            $(this.options.mapConfig.mapSelector).append(`
+                                <div class="mapboxgl-choropleth-info-box">
+                                    <h3 class="mapboxgl-choropleth-info-box__title">${currentFeature.properties.name}</h3>
+                                    ${propString}
+                                </div>
+                            `)
+                        }
 
-                    $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
-                    mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
+                        $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
+                        mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
 
-                    // Reposition the info box if it spills over 
-                    if ( (event.originalEvent.clientX + mapboxGlInfoboxWidth ) > this.mapElement.getBoundingClientRect().right) {
-                        offsetInfobox = mapboxGlInfoboxWidth;
-                    } else {
-                        offsetInfobox = 0;
-                    }
+                        // Reposition the info box if it spills over 
+                        if ( (event.originalEvent.clientX + mapboxGlInfoboxWidth ) > this.mapElement.getBoundingClientRect().right) {
+                            offsetInfobox = mapboxGlInfoboxWidth;
+                        } else {
+                            offsetInfobox = 0;
+                        }
 
-                    // Reposition the info box based on mouse cursor's position
-                    if ($mapboxGLInfobox.length) {
-                        $mapboxGLInfobox.css({
-                            top: `${event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32}px`,
-                            left: `${event.originalEvent.clientX - offsetInfobox}px`
-                        })
-                    }
-                })
+                        // Reposition the info box based on mouse cursor's position
+                        if ($mapboxGLInfobox.length) {
+                            $mapboxGLInfobox.css({
+                                top: `${event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32}px`,
+                                left: `${event.originalEvent.clientX - offsetInfobox}px`
+                            })
+                        }
+                    });
+
+                } // checkDevice.isTouch()
+
 
                 // Store all the custom layers
                 this.customLayers.push(layer.id);

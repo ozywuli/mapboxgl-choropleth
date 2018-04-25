@@ -3037,66 +3037,69 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 \*------------------------------------*/
                 var lastFeature = void 0;
 
-                _this2.map.on('mouseenter', layer.id, function (event) {
-                    // turn mouse cursor into a pointer
-                    _this2.map.getCanvas().style.cursor = 'pointer';
-                });
+                if (!_checkDevice2.default.isTouch()) {
+                    _this2.map.on('mouseenter', layer.id, function (event) {
+                        // turn mouse cursor into a pointer
+                        _this2.map.getCanvas().style.cursor = 'pointer';
+                    });
 
-                _this2.map.on('mouseleave', layer.id, function (event) {
-                    _this2.map.getCanvas().style.cursor = '';
+                    _this2.map.on('mouseleave', layer.id, function (event) {
+                        _this2.map.getCanvas().style.cursor = '';
 
-                    lastFeature = undefined;
-                    $('.mapboxgl-choropleth-info-box').remove();
-                });
+                        lastFeature = undefined;
+                        $('.mapboxgl-choropleth-info-box').remove();
+                    });
 
-                _this2.map.on('mousemove', layer.id, function (event) {
-                    var currentFeature = _this2.map.queryRenderedFeatures(event.point)[0];
-                    var $mapboxGLInfobox = void 0;
-                    var offsetInfobox = void 0;
-                    var mapboxGlInfoboxWidth = void 0;
+                    _this2.map.on('mousemove', layer.id, function (event) {
+                        var currentFeature = _this2.map.queryRenderedFeatures(event.point)[0];
+                        var $mapboxGLInfobox = void 0;
+                        var offsetInfobox = void 0;
+                        var mapboxGlInfoboxWidth = void 0;
 
-                    // Update the info box only if the hovered element changes
-                    if (currentFeature !== lastFeature) {
-                        // set the lastFeature to the current Feature
-                        lastFeature = currentFeature;
+                        // Update the info box only if the hovered element changes
+                        if (currentFeature !== lastFeature) {
+                            // set the lastFeature to the current Feature
+                            lastFeature = currentFeature;
 
-                        // remove any previous info boxes
-                        if ($('.mapboxgl-choropleth-info-box').length) {
-                            $('.mapboxgl-choropleth-info-box').remove();
-                        }
-
-                        // property info string for the info box
-                        var propString = '';
-
-                        // loop the currentFeature's property object
-                        for (var prop in currentFeature.properties) {
-                            if (prop !== 'name' && prop !== 'keys') {
-                                propString += '\n                                    <div class="mapboxgl-choropleth-info-box__property">\n                                        <span class="mapboxgl-choropleth-info-box__property-key">' + prop + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + (0, _numberWithCommas2.default)(currentFeature.properties[prop]) + '</span>\n                                    </div>\n                                ';
+                            // remove any previous info boxes
+                            if ($('.mapboxgl-choropleth-info-box').length) {
+                                $('.mapboxgl-choropleth-info-box').remove();
                             }
+
+                            // property info string for the info box
+                            var propString = '';
+
+                            // loop the currentFeature's property object
+                            for (var prop in currentFeature.properties) {
+                                if (prop !== 'name' && prop !== 'keys') {
+                                    propString += '\n                                        <div class="mapboxgl-choropleth-info-box__property">\n                                            <span class="mapboxgl-choropleth-info-box__property-key">' + prop + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + (0, _numberWithCommas2.default)(currentFeature.properties[prop]) + '</span>\n                                        </div>\n                                    ';
+                                }
+                            }
+
+                            // append the new info box to map
+                            $(_this2.options.mapConfig.mapSelector).append('\n                                <div class="mapboxgl-choropleth-info-box">\n                                    <h3 class="mapboxgl-choropleth-info-box__title">' + currentFeature.properties.name + '</h3>\n                                    ' + propString + '\n                                </div>\n                            ');
                         }
 
-                        // append the new info box to map
-                        $(_this2.options.mapConfig.mapSelector).append('\n                            <div class="mapboxgl-choropleth-info-box">\n                                <h3 class="mapboxgl-choropleth-info-box__title">' + currentFeature.properties.name + '</h3>\n                                ' + propString + '\n                            </div>\n                        ');
-                    }
+                        $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
+                        mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
 
-                    $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
-                    mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
+                        // Reposition the info box if it spills over 
+                        if (event.originalEvent.clientX + mapboxGlInfoboxWidth > _this2.mapElement.getBoundingClientRect().right) {
+                            offsetInfobox = mapboxGlInfoboxWidth;
+                        } else {
+                            offsetInfobox = 0;
+                        }
 
-                    // Reposition the info box if it spills over 
-                    if (event.originalEvent.clientX + mapboxGlInfoboxWidth > _this2.mapElement.getBoundingClientRect().right) {
-                        offsetInfobox = mapboxGlInfoboxWidth;
-                    } else {
-                        offsetInfobox = 0;
-                    }
+                        // Reposition the info box based on mouse cursor's position
+                        if ($mapboxGLInfobox.length) {
+                            $mapboxGLInfobox.css({
+                                top: event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32 + 'px',
+                                left: event.originalEvent.clientX - offsetInfobox + 'px'
+                            });
+                        }
+                    });
+                } // checkDevice.isTouch()
 
-                    // Reposition the info box based on mouse cursor's position
-                    if ($mapboxGLInfobox.length) {
-                        $mapboxGLInfobox.css({
-                            top: event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32 + 'px',
-                            left: event.originalEvent.clientX - offsetInfobox + 'px'
-                        });
-                    }
-                });
 
                 // Store all the custom layers
                 _this2.customLayers.push(layer.id);
@@ -3494,7 +3497,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 })(jQuery, window, document);
 
 },{"../config":1,"./utils/check-device":7,"chroma-js":2,"woohaus-utility-belt/lib/getCentroid":3,"woohaus-utility-belt/lib/getParameterByName":4,"woohaus-utility-belt/lib/numberWithCommas":5}],7:[function(require,module,exports){
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
     value: true
@@ -3503,7 +3506,10 @@ exports.default = {
     isIOS: function isIOS() {
         return !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
     },
-    isAndroid: function isAndroid() {}
+    isAndroid: function isAndroid() {},
+    isTouch: function isTouch() {
+        return 'ontouchstart' in window || navigator.MaxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+    }
 };
 
 },{}]},{},[6])(6)
