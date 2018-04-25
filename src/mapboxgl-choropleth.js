@@ -62,8 +62,6 @@ import checkDevice from './utils/check-device';
         // Combine/merge default and user options
         this.options = $.extend( true, defaultOptions, userOptions );
 
-        console.log(this.options);
-
         /**
          * Init
          */

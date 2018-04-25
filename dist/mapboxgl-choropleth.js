@@ -2898,8 +2898,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         // Combine/merge default and user options
         this.options = $.extend(true, defaultOptions, userOptions);
 
-        console.log(this.options);
-
         /**
          * Init
          */
