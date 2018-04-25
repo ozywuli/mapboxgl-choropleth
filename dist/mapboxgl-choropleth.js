@@ -2815,6 +2815,16 @@ function getParameterByName(name, url) {
 
 exports.default = getParameterByName;
 },{}],5:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+exports.default = function (number) {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+},{}],6:[function(require,module,exports){
 'use strict';
 
 var _config = require('../config');
@@ -2833,10 +2843,14 @@ var _getCentroid = require('woohaus-utility-belt/lib/getCentroid');
 
 var _getCentroid2 = _interopRequireDefault(_getCentroid);
 
+var _numberWithCommas = require('woohaus-utility-belt/lib/numberWithCommas');
+
+var _numberWithCommas2 = _interopRequireDefault(_numberWithCommas);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// import {$, jQuery} from 'jquery';
-;(function ($, window, document, undefined) {
+; // import {$, jQuery} from 'jquery';
+(function ($, window, document, undefined) {
     /**
      * Plugin namespace
      */
@@ -2869,7 +2883,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
         featureHoverHandler: function featureHoverHandler(event) {},
         featureClickEventCallback: function featureClickEventCallback(event) {},
-        updateLayerEnd: function updateLayerEnd(paramLayer, paramProperty) {}
+        updateLayerEnd: function updateLayerEnd(paramLayer, paramProperty) {},
+        updateQueryParamCallback: function updateQueryParamCallback(paramLayer, paramProperty) {}
     };
 
     /**
@@ -2902,9 +2917,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         activeLayer: null,
         activeLayerPropName: null,
         activeLayerPropProperties: null,
+        activeFeature: null,
         customLayers: [],
         $mapContainer: $('.choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
+        mapElement: document.getElementById('map'),
 
         /**
          * Init
@@ -2998,7 +3015,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                     "source": layer.source.id,
                     "paint": {
                         "fill-color": _this2.paintFill(layer.properties[0]),
-                        "fill-opacity": 0.8
+                        "fill-opacity": 0.8,
+                        "fill-outline-color": "#000"
                     },
                     'layout': {
                         'visibility': 'none'
@@ -3024,8 +3042,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
                 _this2.map.on('mousemove', layer.id, function (event) {
                     var currentFeature = _this2.map.queryRenderedFeatures(event.point)[0];
-
-                    // console.log(currentFeature);
+                    var $mapboxGLInfobox = void 0;
+                    var offsetInfobox = void 0;
+                    var mapboxGlInfoboxWidth = void 0;
 
                     // Update the info box only if the hovered element changes
                     if (currentFeature !== lastFeature) {
@@ -3042,8 +3061,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
                         // loop the currentFeature's property object
                         for (var prop in currentFeature.properties) {
-                            if (prop !== 'name') {
-                                propString += '\n                                    <div class="mapboxgl-choropleth-info-box__property">\n                                        <span class="mapboxgl-choropleth-info-box__property-key">' + prop + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + currentFeature.properties[prop] + '</span>\n                                    </div>\n                                ';
+                            if (prop !== 'name' && prop !== 'keys') {
+                                propString += '\n                                    <div class="mapboxgl-choropleth-info-box__property">\n                                        <span class="mapboxgl-choropleth-info-box__property-key">' + prop + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + (0, _numberWithCommas2.default)(currentFeature.properties[prop]) + '</span>\n                                    </div>\n                                ';
                             }
                         }
 
@@ -3051,11 +3070,21 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                         $(_this2.options.mapConfig.mapSelector).append('\n                            <div class="mapboxgl-choropleth-info-box">\n                                <h3 class="mapboxgl-choropleth-info-box__title">' + currentFeature.properties.name + '</h3>\n                                ' + propString + '\n                            </div>\n                        ');
                     }
 
+                    $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
+                    mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
+
+                    // Reposition the info box if it spills over 
+                    if (event.originalEvent.clientX + mapboxGlInfoboxWidth > _this2.mapElement.getBoundingClientRect().right) {
+                        offsetInfobox = mapboxGlInfoboxWidth;
+                    } else {
+                        offsetInfobox = 0;
+                    }
+
                     // Reposition the info box based on mouse cursor's position
-                    if ($('.mapboxgl-choropleth-info-box').length) {
-                        $('.mapboxgl-choropleth-info-box').css({
-                            top: event.originalEvent.clientY - parseInt($('.mapboxgl-choropleth-info-box').height()) - 32 + 'px',
-                            left: event.originalEvent.clientX + 'px'
+                    if ($mapboxGLInfobox.length) {
+                        $mapboxGLInfobox.css({
+                            top: event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32 + 'px',
+                            left: event.originalEvent.clientX - offsetInfobox + 'px'
                         });
                     }
                 });
@@ -3094,6 +3123,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             if (paramLayer) {
                 if (paramProperty) {
                     this.updateLayer(paramLayer, paramProperty);
+                    this.options.updateQueryParamCallback(paramLayer, paramProperty);
                 } else {
                     this.updateLayer(paramLayer);
                 }
@@ -3122,6 +3152,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             // Update layer
             this.updateLayer(layer, property);
+
+            // Callback
+            this.options.updateQueryParamCallback(layer, property);
         },
         // updateQueryParam()
 
@@ -3180,6 +3213,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Handles the click event for features
          */
         featureClickEventHandler: function featureClickEventHandler(event) {
+            this.activeFeature = event;
             this.options.featureClickEventCallback(event);
         },
         // featureClickEventHandler
@@ -3418,5 +3452,5 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
     module.exports = namespace['pluginName'];
 })(jQuery, window, document);
 
-},{"../config":1,"chroma-js":2,"woohaus-utility-belt/lib/getCentroid":3,"woohaus-utility-belt/lib/getParameterByName":4}]},{},[5])(5)
+},{"../config":1,"chroma-js":2,"woohaus-utility-belt/lib/getCentroid":3,"woohaus-utility-belt/lib/getParameterByName":4,"woohaus-utility-belt/lib/numberWithCommas":5}]},{},[6])(6)
 });

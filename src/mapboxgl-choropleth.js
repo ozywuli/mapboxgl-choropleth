@@ -3,7 +3,7 @@ import config from '../config';
 import chroma from 'chroma-js';
 import getParameterByName from 'woohaus-utility-belt/lib/getParameterByName';
 import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
-
+import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
 
 ;(function( $, window, document, undefined ) {
     /**
@@ -47,6 +47,10 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
         updateLayerEnd(paramLayer, paramProperty) {
             
         },
+
+        updateQueryParamCallback(paramLayer, paramProperty) {
+
+        }
     };
 
     /**
@@ -82,9 +86,11 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
         activeLayer: null,
         activeLayerPropName: null,
         activeLayerPropProperties: null,
+        activeFeature: null,
         customLayers: [],
         $mapContainer: $('.choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
+        mapElement: document.getElementById('map'),
         
 
         /**
@@ -171,7 +177,8 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
                     "source": layer.source.id,
                     "paint": {
                         "fill-color": this.paintFill(layer.properties[0]),
-                        "fill-opacity": 0.8
+                        "fill-opacity": 0.8,
+                        "fill-outline-color": "#000"
                     },
                     'layout': {
                         'visibility': 'none'
@@ -196,10 +203,12 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
                     $('.mapboxgl-choropleth-info-box').remove();
                 });
 
+
                 this.map.on('mousemove', layer.id, (event) => {
                     let currentFeature = this.map.queryRenderedFeatures(event.point)[0];
-
-                    // console.log(currentFeature);
+                    let $mapboxGLInfobox;
+                    let offsetInfobox;
+                    let mapboxGlInfoboxWidth;
 
                     // Update the info box only if the hovered element changes
                     if (currentFeature !== lastFeature) {
@@ -216,10 +225,10 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
 
                         // loop the currentFeature's property object
                         for (let prop in currentFeature.properties) {
-                            if (prop !== 'name') {
+                            if (prop !== 'name' && prop !== 'keys') {
                                 propString += `
                                     <div class="mapboxgl-choropleth-info-box__property">
-                                        <span class="mapboxgl-choropleth-info-box__property-key">${prop}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${currentFeature.properties[prop]}</span>
+                                        <span class="mapboxgl-choropleth-info-box__property-key">${prop}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${numberWithCommas(currentFeature.properties[prop])}</span>
                                     </div>
                                 `;    
                             }
@@ -234,11 +243,21 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
                         `)
                     }
 
+                    $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
+                    mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
+
+                    // Reposition the info box if it spills over 
+                    if ( (event.originalEvent.clientX + mapboxGlInfoboxWidth ) > this.mapElement.getBoundingClientRect().right) {
+                        offsetInfobox = mapboxGlInfoboxWidth;
+                    } else {
+                        offsetInfobox = 0;
+                    }
+
                     // Reposition the info box based on mouse cursor's position
-                    if ($('.mapboxgl-choropleth-info-box').length) {
-                        $('.mapboxgl-choropleth-info-box').css({
-                            top: `${event.originalEvent.clientY - parseInt($('.mapboxgl-choropleth-info-box').height()) - 32}px`,
-                            left: `${event.originalEvent.clientX}px`
+                    if ($mapboxGLInfobox.length) {
+                        $mapboxGLInfobox.css({
+                            top: `${event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32}px`,
+                            left: `${event.originalEvent.clientX - offsetInfobox}px`
                         })
                     }
                 })
@@ -274,6 +293,7 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
             if (paramLayer) {
                 if (paramProperty) {
                     this.updateLayer(paramLayer, paramProperty);
+                    this.options.updateQueryParamCallback(paramLayer, paramProperty);
                 } else {
                     this.updateLayer(paramLayer);
                 }
@@ -302,7 +322,8 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
             // Update layer
             this.updateLayer(layer, property);
 
-
+            // Callback
+            this.options.updateQueryParamCallback(layer, property);
         }, // updateQueryParam()
 
 
@@ -318,7 +339,6 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
 
                     property['colorScale'] = colorScale;
                 });
-
 
             });
         }, // createColorScales()
@@ -360,6 +380,7 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
          * Handles the click event for features
          */
         featureClickEventHandler(event) {
+            this.activeFeature = event;
             this.options.featureClickEventCallback(event);
         }, // featureClickEventHandler
 
