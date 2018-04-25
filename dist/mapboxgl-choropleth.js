@@ -2847,10 +2847,14 @@ var _numberWithCommas = require('woohaus-utility-belt/lib/numberWithCommas');
 
 var _numberWithCommas2 = _interopRequireDefault(_numberWithCommas);
 
+var _checkDevice = require('./utils/check-device');
+
+var _checkDevice2 = _interopRequireDefault(_checkDevice);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-; // import {$, jQuery} from 'jquery';
-(function ($, window, document, undefined) {
+// import {$, jQuery} from 'jquery';
+;(function ($, window, document, undefined) {
     /**
      * Plugin namespace
      */
@@ -2869,7 +2873,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             container: 'map',
             style: 'mapbox://styles/aosika/cjbepjvcn94182rmrjfnpudra',
             center: [0, 0],
-            zoom: 1
+            zoom: 0
         }, // mapbox
 
         /**
@@ -2893,6 +2897,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
     namespace['pluginName'] = function (userOptions) {
         // Combine/merge default and user options
         this.options = $.extend(true, defaultOptions, userOptions);
+
+        console.log(this.options);
 
         /**
          * Init
@@ -2922,6 +2928,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         $mapContainer: $('.choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
         mapElement: document.getElementById('map'),
+
+        /**
+         * Keep track of touch time for IOS touch events
+         */
+        touchTime: null,
 
         /**
          * Init
@@ -3203,18 +3214,50 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             // Add click event to each custom layer
             this.customLayers.forEach(function (layer) {
-                _this4.map.on('click', layer, _this4.featureClickEventHandler.bind(_this4));
+                if (_checkDevice2.default.isIOS()) {
+                    _this4.map.on('touchstart', layer, _this4.featureTouchStartHandler.bind(_this4));
+                    _this4.map.on('touchend', layer, _this4.featureTouchEndHandler.bind(_this4));
+                } else {
+                    _this4.map.on('click', layer, _this4.featureClickEventHandler.bind(_this4));
+                }
             });
         },
         // initFeatureClickEvent
+
+        /**
+         * 
+         */
+        featureEventResponse: function featureEventResponse(event) {
+            this.activeFeature = event;
+            this.options.featureClickEventCallback(event);
+        },
+
+
+        /**
+         * 
+         */
+        featureTouchStartHandler: function featureTouchStartHandler(event) {
+            this.touchTime = new Date();
+        },
+
+
+        /**
+         * 
+         */
+        featureTouchEndHandler: function featureTouchEndHandler(event) {
+            var diff = new Date() - this.touchTime;
+            if (diff < 100) {
+                this.activeFeature = event;
+                this.options.featureClickEventCallback(event);
+            }
+        },
 
 
         /**
          * Handles the click event for features
          */
         featureClickEventHandler: function featureClickEventHandler(event) {
-            this.activeFeature = event;
-            this.options.featureClickEventCallback(event);
+            this.featureEventResponse(event);
         },
         // featureClickEventHandler
 
@@ -3452,5 +3495,18 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
     module.exports = namespace['pluginName'];
 })(jQuery, window, document);
 
-},{"../config":1,"chroma-js":2,"woohaus-utility-belt/lib/getCentroid":3,"woohaus-utility-belt/lib/getParameterByName":4,"woohaus-utility-belt/lib/numberWithCommas":5}]},{},[6])(6)
+},{"../config":1,"./utils/check-device":7,"chroma-js":2,"woohaus-utility-belt/lib/getCentroid":3,"woohaus-utility-belt/lib/getParameterByName":4,"woohaus-utility-belt/lib/numberWithCommas":5}],7:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+    isIOS: function isIOS() {
+        return !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
+    },
+    isAndroid: function isAndroid() {}
+};
+
+},{}]},{},[6])(6)
 });

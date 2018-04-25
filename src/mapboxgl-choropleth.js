@@ -4,6 +4,7 @@ import chroma from 'chroma-js';
 import getParameterByName from 'woohaus-utility-belt/lib/getParameterByName';
 import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
 import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
+import checkDevice from './utils/check-device';
 
 ;(function( $, window, document, undefined ) {
     /**
@@ -24,7 +25,7 @@ import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
             container: 'map',
             style: 'mapbox://styles/aosika/cjbepjvcn94182rmrjfnpudra',
             center: [0, 0],
-            zoom: 1
+            zoom: 0
         }, // mapbox
 
         /**
@@ -53,12 +54,15 @@ import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
         }
     };
 
+
     /**
      * Constructor
      */
     namespace['pluginName'] = function( userOptions ) {
         // Combine/merge default and user options
         this.options = $.extend( true, defaultOptions, userOptions );
+
+        console.log(this.options);
 
         /**
          * Init
@@ -91,6 +95,11 @@ import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
         $mapContainer: $('.choropleth-container'),
         mapLegend: 'mapboxgl-choropleth-legend',
         mapElement: document.getElementById('map'),
+
+        /**
+         * Keep track of touch time for IOS touch events
+         */
+        touchTime: null,
         
 
         /**
@@ -371,17 +380,46 @@ import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
         initFeatureClickEvent() {
             // Add click event to each custom layer
             this.customLayers.forEach((layer) => {
-                this.map.on('click', layer, this.featureClickEventHandler.bind(this));
+                if (checkDevice.isIOS()) {
+                    this.map.on('touchstart', layer, this.featureTouchStartHandler.bind(this));
+                    this.map.on('touchend', layer, this.featureTouchEndHandler.bind(this));
+                } else {
+                    this.map.on('click', layer, this.featureClickEventHandler.bind(this));
+                }
             });
         }, // initFeatureClickEvent
 
+        /**
+         * 
+         */
+        featureEventResponse(event) {
+            this.activeFeature = event;
+            this.options.featureClickEventCallback(event);
+        },
+
+        /**
+         * 
+         */
+        featureTouchStartHandler(event) {
+            this.touchTime = new Date();
+        },
+
+        /**
+         * 
+         */
+        featureTouchEndHandler(event) {
+            let diff = new Date() - this.touchTime;
+            if (diff < 100) {
+                this.activeFeature = event;
+                this.options.featureClickEventCallback(event);
+            }
+        },
 
         /**
          * Handles the click event for features
          */
         featureClickEventHandler(event) {
-            this.activeFeature = event;
-            this.options.featureClickEventCallback(event);
+            this.featureEventResponse(event);
         }, // featureClickEventHandler
 
 
