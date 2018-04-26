@@ -2870,8 +2870,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         \*------------------------------------*/
         map: null,
         activeLayer: null,
-        activeLayerPropName: null,
-        activeLayerPropProperties: null,
+        activeLayerPropertyKey: null,
+        activeLayerPropertyProperties: null,
         activeFeature: null,
         customLayers: [],
         $mapContainer: $('.choropleth-container'),
@@ -3035,17 +3035,17 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                     }
 
                     // property info string for the info box
-                    var propString = '';
+                    var featurePropertyString = '';
 
                     // loop the currentFeature's property object
-                    for (var prop in currentFeature.properties) {
-                        if (prop !== 'name' && prop !== 'keys') {
-                            propString += '\n                                <div class="mapboxgl-choropleth-info-box__property">\n                                    <span class="mapboxgl-choropleth-info-box__property-key">' + prop + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + (0, _numberWithCommas2.default)(currentFeature.properties[prop]) + '</span>\n                                </div>\n                            ';
+                    for (var featureProperty in currentFeature.properties) {
+                        if (featureProperty !== 'name' && featureProperty !== 'keys') {
+                            featurePropertyString += '\n                                <div class="mapboxgl-choropleth-info-box__property">\n                                    <span class="mapboxgl-choropleth-info-box__property-key">' + featureProperty + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + (0, _numberWithCommas2.default)(currentFeature.properties[featureProperty]) + '</span>\n                                </div>\n                            ';
                         }
                     }
 
                     // append the new info box to map
-                    $(_this3.options.mapConfig.mapSelector).append('\n                        <div class="mapboxgl-choropleth-info-box">\n                            <h3 class="mapboxgl-choropleth-info-box__title">' + currentFeature.properties.name + '</h3>\n                            ' + propString + '\n                        </div>\n                    ');
+                    $(_this3.options.mapConfig.mapSelector).append('\n                        <div class="mapboxgl-choropleth-info-box">\n                            <h3 class="mapboxgl-choropleth-info-box__title">' + currentFeature.properties.name + '</h3>\n                            ' + featurePropertyString + '\n                        </div>\n                    ');
                 }
 
                 $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
@@ -3109,13 +3109,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         /**
          * Update query param
          */
-        updateQueryParam: function updateQueryParam(layer, property) {
+        updateQueryParam: function updateQueryParam(paramLayer, paramProperty) {
             // Get the layer name from the URL
-            var queryString = 'layer=' + layer;
+            var queryString = 'layer=' + paramLayer;
 
             // Get the property name (if it exists) from the URL
-            if (property) {
-                queryString += '&property=' + property;
+            if (paramProperty) {
+                queryString += '&property=' + paramProperty;
             }
 
             // Construct the new URL from the query string
@@ -3123,7 +3123,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             window.history.pushState('', '', pageUrl);
 
             // Update layer
-            this.updateLayer(layer, property);
+            this.updateLayer(paramLayer, paramProperty);
         },
         // updateQueryParam()
 
@@ -3149,7 +3149,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Set up the fill for layers
          */
         paintFill: function paintFill(prop) {
-            var fillColorArray = ['step', ['get', prop.property]];
+            var fillColorArray = ['step', ['get', prop.key]];
 
             prop.colorScale.map(function (color, index) {
                 if (index > 0) {
@@ -3291,13 +3291,13 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // if property isn't passed in
             if (!propertyName) {
                 // Set active properties
-                this.setActiveProperty(this.findLayer(this.activeLayer).properties[0].property);
+                this.setActiveProperty(this.findLayer(this.activeLayer).properties[0].key);
 
                 // set property name to the default value (the first object)
-                propertyName = this.findLayer(this.activeLayer).properties[0].property;
+                propertyName = this.findLayer(this.activeLayer).properties[0].key;
             } else {
                 this.findLayer(this.activeLayer).properties.map(function (property) {
-                    if (property.property === propertyName) {
+                    if (property.key === propertyName) {
                         _this7.map.setPaintProperty(_this7.activeLayer, 'fill-color', _this7.paintFill(property));
                         _this7.setActiveProperty(propertyName);
                     }
@@ -3341,20 +3341,20 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         /**
          * 
          */
-        setActivePropName: function setActivePropName(propName) {
-            this.activeLayerPropName = propName;
+        setActivePropertyKey: function setActivePropertyKey(propertyKey) {
+            this.activeLayerPropertyKey = propertyKey;
         },
 
 
         /**
          * 
          */
-        setActivePropProperties: function setActivePropProperties() {
+        setActiveKeyProperties: function setActiveKeyProperties() {
             var _this8 = this;
 
             this.findLayer(this.activeLayer).properties.map(function (property) {
-                if (property.property === _this8.activeLayerPropName) {
-                    _this8.activeLayerPropProperties = property;
+                if (property.key === _this8.activeLayerPropertyKey) {
+                    _this8.activeLayerPropertyProperties = property;
                 }
             });
         },
@@ -3363,9 +3363,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         /**
          * 
          */
-        setActiveProperty: function setActiveProperty(propName) {
-            this.setActivePropName(propName);
-            this.setActivePropProperties(this);
+        setActiveProperty: function setActiveProperty(propertyKey) {
+            this.setActivePropertyKey(propertyKey);
+            this.setActiveKeyProperties(this);
         },
 
 
@@ -3379,8 +3379,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 $('.' + this.mapLegend).remove();
             }
 
-            var colorScale = this.activeLayerPropProperties.colorScale;
-            var steps = this.activeLayerPropProperties.step;
+            var colorScale = this.activeLayerPropertyProperties.colorScale;
+            var steps = this.activeLayerPropertyProperties.step;
 
             // Reverse the legend
             if (this.options.mapConfig.legendReverse) {
@@ -3411,7 +3411,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 rows += '\n                    <div class="mapboxgl-choropleth-legend__row">\n                        <div class="mapboxgl-choropleth-legend__fill" style="background-color: ' + color + ';"></div>\n                        <div class="mapboxgl-choropleth-legend__row-title">\n                            ' + rowTitle + '\n                        </div>\n                    </div>\n                ';
             });
 
-            var legendTitle = '<h3 class="mapboxgl-choropleth-legend__title">' + this.activeLayerPropProperties.title + '</h3>';
+            var legendTitle = '<h3 class="mapboxgl-choropleth-legend__title">' + this.activeLayerPropertyProperties.title + '</h3>';
 
             this.$mapContainer.append('\n                <div class="' + this.mapLegend + '">\n                    <div class="mapboxgl-choropleth-legend__wrapper">\n                        ' + legendTitle + '\n                        ' + rows + '\n                    </div>\n                </div>\n            ');
         }

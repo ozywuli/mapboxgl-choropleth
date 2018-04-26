@@ -85,8 +85,8 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
         \*------------------------------------*/
         map: null,
         activeLayer: null,
-        activeLayerPropName: null,
-        activeLayerPropProperties: null,
+        activeLayerPropertyKey: null,
+        activeLayerPropertyProperties: null,
         activeFeature: null,
         customLayers: [],
         $mapContainer: $('.choropleth-container'),
@@ -242,14 +242,14 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
                     }       
 
                     // property info string for the info box
-                    let propString = '';
+                    let featurePropertyString = '';
 
                     // loop the currentFeature's property object
-                    for (let prop in currentFeature.properties) {
-                        if (prop !== 'name' && prop !== 'keys') {
-                            propString += `
+                    for (let featureProperty in currentFeature.properties) {
+                        if (featureProperty !== 'name' && featureProperty !== 'keys') {
+                            featurePropertyString += `
                                 <div class="mapboxgl-choropleth-info-box__property">
-                                    <span class="mapboxgl-choropleth-info-box__property-key">${prop}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${numberWithCommas(currentFeature.properties[prop])}</span>
+                                    <span class="mapboxgl-choropleth-info-box__property-key">${featureProperty}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${numberWithCommas(currentFeature.properties[featureProperty])}</span>
                                 </div>
                             `;    
                         }
@@ -259,7 +259,7 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
                     $(this.options.mapConfig.mapSelector).append(`
                         <div class="mapboxgl-choropleth-info-box">
                             <h3 class="mapboxgl-choropleth-info-box__title">${currentFeature.properties.name}</h3>
-                            ${propString}
+                            ${featurePropertyString}
                         </div>
                     `)
                 }
@@ -321,13 +321,13 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
         /**
          * Update query param
          */
-        updateQueryParam(layer, property) {
+        updateQueryParam(paramLayer, paramProperty) {
             // Get the layer name from the URL
-            let queryString = `layer=${layer}`;
+            let queryString = `layer=${paramLayer}`;
 
             // Get the property name (if it exists) from the URL
-            if (property) {
-                queryString += `&property=${property}`;
+            if (paramProperty) {
+                queryString += `&property=${paramProperty}`;
             }
 
             // Construct the new URL from the query string
@@ -335,7 +335,7 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
             window.history.pushState('', '', pageUrl);
 
             // Update layer
-            this.updateLayer(layer, property);
+            this.updateLayer(paramLayer, paramProperty);
         }, // updateQueryParam()
 
 
@@ -362,7 +362,7 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
         paintFill(prop) {
             let fillColorArray = [
                 'step',
-                ['get', prop.property]
+                ['get', prop.key]
             ];
 
             prop.colorScale.map((color, index) => {
@@ -490,13 +490,13 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
             // if property isn't passed in
             if (!propertyName) {
                 // Set active properties
-                this.setActiveProperty(this.findLayer(this.activeLayer).properties[0].property);
+                this.setActiveProperty(this.findLayer(this.activeLayer).properties[0].key);
 
                 // set property name to the default value (the first object)
-                propertyName = this.findLayer(this.activeLayer).properties[0].property;
+                propertyName = this.findLayer(this.activeLayer).properties[0].key;
             } else {
                 this.findLayer(this.activeLayer).properties.map((property) => {
-                    if (property.property === propertyName) {
+                    if (property.key === propertyName) {
                         this.map.setPaintProperty(this.activeLayer, 'fill-color', this.paintFill(property));
                         this.setActiveProperty(propertyName);
                     }
@@ -538,17 +538,17 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
         /**
          * 
          */
-        setActivePropName(propName) {
-            this.activeLayerPropName = propName;
+        setActivePropertyKey(propertyKey) {
+            this.activeLayerPropertyKey = propertyKey;
         },
 
         /**
          * 
          */
-        setActivePropProperties() {
+        setActiveKeyProperties() {
             this.findLayer(this.activeLayer).properties.map((property) => {
-                if (property.property === this.activeLayerPropName) {
-                    this.activeLayerPropProperties = property;
+                if (property.key === this.activeLayerPropertyKey) {
+                    this.activeLayerPropertyProperties = property;
                 }                    
             });
         },
@@ -556,9 +556,9 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
         /**
          * 
          */
-        setActiveProperty(propName) {
-            this.setActivePropName(propName);
-            this.setActivePropProperties(this);
+        setActiveProperty(propertyKey) {
+            this.setActivePropertyKey(propertyKey);
+            this.setActiveKeyProperties(this);
         },
 
         /**
@@ -569,8 +569,8 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
                 $(`.${this.mapLegend}`).remove();
             }
 
-            let colorScale = this.activeLayerPropProperties.colorScale;
-            let steps = this.activeLayerPropProperties.step;
+            let colorScale = this.activeLayerPropertyProperties.colorScale;
+            let steps = this.activeLayerPropertyProperties.step;
 
             // Reverse the legend
             if (this.options.mapConfig.legendReverse) {
@@ -609,7 +609,7 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
                 `;
             })
 
-            let legendTitle = `<h3 class="mapboxgl-choropleth-legend__title">${this.activeLayerPropProperties.title}</h3>`;
+            let legendTitle = `<h3 class="mapboxgl-choropleth-legend__title">${this.activeLayerPropertyProperties.title}</h3>`;
 
             this.$mapContainer.append(`
                 <div class="${this.mapLegend}">
