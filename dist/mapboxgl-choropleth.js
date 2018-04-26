@@ -2768,63 +2768,6 @@ exports.default = config;
 }).call(this);
 
 },{}],3:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-exports.default = function (arr) {
-    var twoTimesSignedArea = 0;
-    var cxTimes6SignedArea = 0;
-    var cyTimes6SignedArea = 0;
-
-    var length = arr.length;
-
-    var x = function x(i) {
-        return arr[i % length][0];
-    };
-    var y = function y(i) {
-        return arr[i % length][1];
-    };
-
-    for (var i = 0; i < arr.length; i++) {
-        var twoSA = x(i) * y(i + 1) - x(i + 1) * y(i);
-        twoTimesSignedArea += twoSA;
-        cxTimes6SignedArea += (x(i) + x(i + 1)) * twoSA;
-        cyTimes6SignedArea += (y(i) + y(i + 1)) * twoSA;
-    }
-    var sixSignedArea = 3 * twoTimesSignedArea;
-    return [cxTimes6SignedArea / sixSignedArea, cyTimes6SignedArea / sixSignedArea];
-};
-},{}],4:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-function getParameterByName(name, url) {
-    if (!url) url = window.location.href;
-    name = name.replace(/[\[\]]/g, "\\$&");
-    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-        results = regex.exec(url);
-    if (!results) return null;
-    if (!results[2]) return '';
-    return decodeURIComponent(results[2].replace(/\+/g, " "));
-}
-
-exports.default = getParameterByName;
-},{}],5:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-exports.default = function (number) {
-    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-};
-},{}],6:[function(require,module,exports){
 'use strict';
 
 var _config = require('../config');
@@ -2847,7 +2790,7 @@ var _numberWithCommas = require('woohaus-utility-belt/lib/numberWithCommas');
 
 var _numberWithCommas2 = _interopRequireDefault(_numberWithCommas);
 
-var _checkDevice = require('./utils/check-device');
+var _checkDevice = require('woohaus-utility-belt/lib/checkDevice');
 
 var _checkDevice2 = _interopRequireDefault(_checkDevice);
 
@@ -2885,10 +2828,23 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             mapSelector: '.js-choropleth-map'
         },
 
-        featureHoverHandler: function featureHoverHandler(event) {},
+        /**
+         * Controls configuration
+         */
+        controlsConfig: {
+            layerAnchorSelector: '.js-choropleth-layer-anchor'
+        },
+
+        /**
+         * Feature Click Event Callback
+         */
         featureClickEventCallback: function featureClickEventCallback(event) {},
-        updateLayerEnd: function updateLayerEnd(paramLayer, paramProperty) {},
-        updateQueryParamCallback: function updateQueryParamCallback(paramLayer, paramProperty) {}
+
+
+        /**
+         * Update Layer Callback
+         */
+        updateLayerCallback: function updateLayerCallback(paramLayer, paramProperty) {}
     };
 
     /**
@@ -2902,11 +2858,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Init
          */
         this.init();
-
-        /**
-         * Controller
-         */
-        this.controller = {};
     };
 
     /**
@@ -2989,8 +2940,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         afterMapLoaded: function afterMapLoaded(map) {
             this.initQueryParamListener();
             this.initFeatureClickEvent();
-            this.initLayerEvent();
-            this.initPropEvent();
+            this.initLayerAnchorClickEvent();
         },
         // afterMapLoaded()
 
@@ -3032,72 +2982,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                     }
                 }, firstSymbolId);
 
-                /*------------------------------------*\
-                  Mouse events
-                \*------------------------------------*/
-                var lastFeature = void 0;
-
+                // check if touch device. if it's not a touch device, add mouse events
                 if (!_checkDevice2.default.isTouch()) {
-                    _this2.map.on('mouseenter', layer.id, function (event) {
-                        // turn mouse cursor into a pointer
-                        _this2.map.getCanvas().style.cursor = 'pointer';
-                    });
-
-                    _this2.map.on('mouseleave', layer.id, function (event) {
-                        _this2.map.getCanvas().style.cursor = '';
-
-                        lastFeature = undefined;
-                        $('.mapboxgl-choropleth-info-box').remove();
-                    });
-
-                    _this2.map.on('mousemove', layer.id, function (event) {
-                        var currentFeature = _this2.map.queryRenderedFeatures(event.point)[0];
-                        var $mapboxGLInfobox = void 0;
-                        var offsetInfobox = void 0;
-                        var mapboxGlInfoboxWidth = void 0;
-
-                        // Update the info box only if the hovered element changes
-                        if (currentFeature !== lastFeature) {
-                            // set the lastFeature to the current Feature
-                            lastFeature = currentFeature;
-
-                            // remove any previous info boxes
-                            if ($('.mapboxgl-choropleth-info-box').length) {
-                                $('.mapboxgl-choropleth-info-box').remove();
-                            }
-
-                            // property info string for the info box
-                            var propString = '';
-
-                            // loop the currentFeature's property object
-                            for (var prop in currentFeature.properties) {
-                                if (prop !== 'name' && prop !== 'keys') {
-                                    propString += '\n                                        <div class="mapboxgl-choropleth-info-box__property">\n                                            <span class="mapboxgl-choropleth-info-box__property-key">' + prop + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + (0, _numberWithCommas2.default)(currentFeature.properties[prop]) + '</span>\n                                        </div>\n                                    ';
-                                }
-                            }
-
-                            // append the new info box to map
-                            $(_this2.options.mapConfig.mapSelector).append('\n                                <div class="mapboxgl-choropleth-info-box">\n                                    <h3 class="mapboxgl-choropleth-info-box__title">' + currentFeature.properties.name + '</h3>\n                                    ' + propString + '\n                                </div>\n                            ');
-                        }
-
-                        $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
-                        mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
-
-                        // Reposition the info box if it spills over 
-                        if (event.originalEvent.clientX + mapboxGlInfoboxWidth > _this2.mapElement.getBoundingClientRect().right) {
-                            offsetInfobox = mapboxGlInfoboxWidth;
-                        } else {
-                            offsetInfobox = 0;
-                        }
-
-                        // Reposition the info box based on mouse cursor's position
-                        if ($mapboxGLInfobox.length) {
-                            $mapboxGLInfobox.css({
-                                top: event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32 + 'px',
-                                left: event.originalEvent.clientX - offsetInfobox + 'px'
-                            });
-                        }
-                    });
+                    _this2.initMouseEvents(layer);
                 } // checkDevice.isTouch()
 
 
@@ -3107,26 +2994,100 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         },
         // addMapLayers
 
+        /**
+         * Initialize mouse events
+         */
+        initMouseEvents: function initMouseEvents(layer) {
+            var _this3 = this;
+
+            // keep track of last feature
+            var lastFeature = void 0;
+
+            // mouse enter event
+            this.map.on('mouseenter', layer.id, function (event) {
+                // turn mouse cursor into a pointer
+                _this3.map.getCanvas().style.cursor = 'pointer';
+            });
+
+            // mouse leave event
+            this.map.on('mouseleave', layer.id, function (event) {
+                _this3.map.getCanvas().style.cursor = '';
+
+                lastFeature = undefined;
+                $('.mapboxgl-choropleth-info-box').remove();
+            });
+
+            // mouse move event
+            this.map.on('mousemove', layer.id, function (event) {
+                var currentFeature = _this3.map.queryRenderedFeatures(event.point)[0];
+                var $mapboxGLInfobox = void 0;
+                var offsetInfobox = void 0;
+                var mapboxGlInfoboxWidth = void 0;
+
+                // Update the info box only if the hovered element changes
+                if (currentFeature !== lastFeature) {
+                    // set the lastFeature to the current Feature
+                    lastFeature = currentFeature;
+
+                    // remove any previous info boxes
+                    if ($('.mapboxgl-choropleth-info-box').length) {
+                        $('.mapboxgl-choropleth-info-box').remove();
+                    }
+
+                    // property info string for the info box
+                    var propString = '';
+
+                    // loop the currentFeature's property object
+                    for (var prop in currentFeature.properties) {
+                        if (prop !== 'name' && prop !== 'keys') {
+                            propString += '\n                                <div class="mapboxgl-choropleth-info-box__property">\n                                    <span class="mapboxgl-choropleth-info-box__property-key">' + prop + '</span>: <span class="mapboxgl-choropleth-info-box__property-value">' + (0, _numberWithCommas2.default)(currentFeature.properties[prop]) + '</span>\n                                </div>\n                            ';
+                        }
+                    }
+
+                    // append the new info box to map
+                    $(_this3.options.mapConfig.mapSelector).append('\n                        <div class="mapboxgl-choropleth-info-box">\n                            <h3 class="mapboxgl-choropleth-info-box__title">' + currentFeature.properties.name + '</h3>\n                            ' + propString + '\n                        </div>\n                    ');
+                }
+
+                $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
+                mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
+
+                // Reposition the info box if it spills over 
+                if (event.originalEvent.clientX + mapboxGlInfoboxWidth > _this3.mapElement.getBoundingClientRect().right) {
+                    offsetInfobox = mapboxGlInfoboxWidth;
+                } else {
+                    offsetInfobox = 0;
+                }
+
+                // Reposition the info box based on mouse cursor's position
+                if ($mapboxGLInfobox.length) {
+                    $mapboxGLInfobox.css({
+                        top: event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32 + 'px',
+                        left: event.originalEvent.clientX - offsetInfobox + 'px'
+                    });
+                }
+            });
+        },
+
 
         /**
          * Listen to query parameter changes
          */
         initQueryParamListener: function initQueryParamListener() {
-            var _this3 = this;
+            var _this4 = this;
 
             // console.log('method: initQueryParamListener');
 
             this.checkQueryParam();
 
             window.onpopstate = history.onpushstate = function (event) {
-                _this3.checkQueryParam();
+                _this4.checkQueryParam();
             };
         },
         // initQueryParamListener()
 
 
         /**
-         * Check query param
+         * Check query params 
          */
         checkQueryParam: function checkQueryParam() {
             var paramLayer = (0, _getParameterByName2.default)('layer');
@@ -3135,7 +3096,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             if (paramLayer) {
                 if (paramProperty) {
                     this.updateLayer(paramLayer, paramProperty);
-                    this.options.updateQueryParamCallback(paramLayer, paramProperty);
                 } else {
                     this.updateLayer(paramLayer);
                 }
@@ -3164,9 +3124,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             // Update layer
             this.updateLayer(layer, property);
-
-            // Callback
-            this.options.updateQueryParamCallback(layer, property);
         },
         // updateQueryParam()
 
@@ -3211,15 +3168,15 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Initialize click events for all features
          */
         initFeatureClickEvent: function initFeatureClickEvent() {
-            var _this4 = this;
+            var _this5 = this;
 
             // Add click event to each custom layer
             this.customLayers.forEach(function (layer) {
                 if (_checkDevice2.default.isIOS()) {
-                    _this4.map.on('touchstart', layer, _this4.featureTouchStartHandler.bind(_this4));
-                    _this4.map.on('touchend', layer, _this4.featureTouchEndHandler.bind(_this4));
+                    _this5.map.on('touchstart', layer, _this5.featureTouchStartHandler.bind(_this5));
+                    _this5.map.on('touchend', layer, _this5.featureTouchEndHandler.bind(_this5));
                 } else {
-                    _this4.map.on('click', layer, _this4.featureClickEventHandler.bind(_this4));
+                    _this5.map.on('click', layer, _this5.featureClickEventHandler.bind(_this5));
                 }
             });
         },
@@ -3266,32 +3223,33 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
         /**
          * Click event for layer reveals/hide
          */
-        initLayerEvent: function initLayerEvent() {
-            $('body').on('click', '.js-choropleth-layer-anchor', this.layerEventHandler.bind(this));
+        initLayerAnchorClickEvent: function initLayerAnchorClickEvent() {
+            $('body').on('click', this.options.controlsConfig.layerAnchorSelector, this.layerAnchorClickEventHandler.bind(this));
         },
-        // initLayerEvent
+        // initLayerAnchorClickEvent
 
 
         /**
          * Handles the anchor event for showing/revealing layers
          */
-        layerEventHandler: function layerEventHandler(event) {
+        layerAnchorClickEventHandler: function layerAnchorClickEventHandler(event) {
             event.preventDefault();
             event.stopPropagation();
 
             // Get name of clicked layer from anchor
             var clickedLayer = $(event.currentTarget).attr('data-layer');
+            var clickedProp = $(event.currentTarget).attr('data-prop');
 
-            this.updateQueryParam(clickedLayer);
+            this.updateQueryParam(clickedLayer, clickedProp);
         },
-        // layerEventHandler()
+        // layerAnchorClickEventHandler()
 
 
         /**
          * Show user selected layer (active layer)
          */
         revealActiveLayer: function revealActiveLayer(activeLayer) {
-            var _this5 = this;
+            var _this6 = this;
 
             // console.log('method: revealActiveLayer');
 
@@ -3300,7 +3258,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // Hide unclicked layers
             this.customLayers.forEach(function (layer) {
                 if (layer !== activeLayer) {
-                    _this5.map.setLayoutProperty(layer, 'visibility', 'none');
+                    _this6.map.setLayoutProperty(layer, 'visibility', 'none');
                 }
             });
 
@@ -3319,7 +3277,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Update layer
          */
         updateLayer: function updateLayer(layer, propertyName) {
-            var _this6 = this;
+            var _this7 = this;
 
             // console.log('method: updateLayer');
 
@@ -3340,8 +3298,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             } else {
                 this.findLayer(this.activeLayer).properties.map(function (property) {
                     if (property.property === propertyName) {
-                        _this6.map.setPaintProperty(_this6.activeLayer, 'fill-color', _this6.paintFill(property));
-                        _this6.setActiveProperty(propertyName);
+                        _this7.map.setPaintProperty(_this7.activeLayer, 'fill-color', _this7.paintFill(property));
+                        _this7.setActiveProperty(propertyName);
                     }
                 });
             }
@@ -3352,34 +3310,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             // Update map legend
             this.addMapLegend();
 
-            // Update layer end
-            this.options.updateLayerEnd(this.activeLayer, propertyName);
+            // Run update layer callback
+            this.options.updateLayerCallback(this.activeLayer, propertyName);
         },
         // updateLayer()
-
-
-        /**
-         * Init the event handler for layer properties
-         */
-        initPropEvent: function initPropEvent() {
-            $('body').on('click', '.js-choropleth-prop-anchor', this.propEventHandler.bind(this));
-        },
-        // initPropEvent()
-
-
-        /**
-         * Handles the event for layer properties (when users select a property to show on the map)
-         */
-        propEventHandler: function propEventHandler(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            var clickedLayer = $(event.currentTarget).attr('data-layer');
-            var clickedProp = $(event.currentTarget).attr('data-prop');
-
-            this.updateQueryParam(clickedLayer, clickedProp);
-        },
-        // propEventHandler
 
 
         /**
@@ -3416,11 +3350,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * 
          */
         setActivePropProperties: function setActivePropProperties() {
-            var _this7 = this;
+            var _this8 = this;
 
             this.findLayer(this.activeLayer).properties.map(function (property) {
-                if (property.property === _this7.activeLayerPropName) {
-                    _this7.activeLayerPropProperties = property;
+                if (property.property === _this8.activeLayerPropName) {
+                    _this8.activeLayerPropProperties = property;
                 }
             });
         },
@@ -3439,11 +3373,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          * Add legends to the map
          */
         addMapLegend: function addMapLegend() {
-            var _this8 = this;
-
-            // console.log('method: addMapLegend');
-            // console.log(this.activeLayerPropName);
-            // console.log(this.activeLayerPropProperties);
+            var _this9 = this;
 
             if ($('.' + this.mapLegend).length) {
                 $('.' + this.mapLegend).remove();
@@ -3464,7 +3394,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
             colorScale.forEach(function (color, index) {
                 var rowTitle = void 0;
 
-                if (_this8.options.mapConfig.legendReverse) {
+                if (_this9.options.mapConfig.legendReverse) {
                     if (index === 0) {
                         rowTitle = steps[index] + '+';
                     } else {
@@ -3496,7 +3426,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
     module.exports = namespace['pluginName'];
 })(jQuery, window, document);
 
-},{"../config":1,"./utils/check-device":7,"chroma-js":2,"woohaus-utility-belt/lib/getCentroid":3,"woohaus-utility-belt/lib/getParameterByName":4,"woohaus-utility-belt/lib/numberWithCommas":5}],7:[function(require,module,exports){
+},{"../config":1,"chroma-js":2,"woohaus-utility-belt/lib/checkDevice":4,"woohaus-utility-belt/lib/getCentroid":5,"woohaus-utility-belt/lib/getParameterByName":6,"woohaus-utility-belt/lib/numberWithCommas":7}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -3511,6 +3441,62 @@ exports.default = {
         return 'ontouchstart' in window || navigator.MaxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
     }
 };
+},{}],5:[function(require,module,exports){
+"use strict";
 
-},{}]},{},[6])(6)
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+exports.default = function (arr) {
+    var twoTimesSignedArea = 0;
+    var cxTimes6SignedArea = 0;
+    var cyTimes6SignedArea = 0;
+
+    var length = arr.length;
+
+    var x = function x(i) {
+        return arr[i % length][0];
+    };
+    var y = function y(i) {
+        return arr[i % length][1];
+    };
+
+    for (var i = 0; i < arr.length; i++) {
+        var twoSA = x(i) * y(i + 1) - x(i + 1) * y(i);
+        twoTimesSignedArea += twoSA;
+        cxTimes6SignedArea += (x(i) + x(i + 1)) * twoSA;
+        cyTimes6SignedArea += (y(i) + y(i + 1)) * twoSA;
+    }
+    var sixSignedArea = 3 * twoTimesSignedArea;
+    return [cxTimes6SignedArea / sixSignedArea, cyTimes6SignedArea / sixSignedArea];
+};
+},{}],6:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+exports.default = getParameterByName;
+},{}],7:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+exports.default = function (number) {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+},{}]},{},[3])(3)
 });

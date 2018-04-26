@@ -4,7 +4,7 @@ import chroma from 'chroma-js';
 import getParameterByName from 'woohaus-utility-belt/lib/getParameterByName';
 import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
 import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
-import checkDevice from './utils/check-device';
+import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
 
 ;(function( $, window, document, undefined ) {
     /**
@@ -37,20 +37,26 @@ import checkDevice from './utils/check-device';
             mapSelector: '.js-choropleth-map',
         },
 
-        featureHoverHandler(event) {
-
+        /**
+         * Controls configuration
+         */
+        controlsConfig: {
+            layerAnchorSelector: '.js-choropleth-layer-anchor'
         },
 
+
+        /**
+         * Feature Click Event Callback
+         */
         featureClickEventCallback(event) {
 
         },
 
-        updateLayerEnd(paramLayer, paramProperty) {
+        /**
+         * Update Layer Callback
+         */
+        updateLayerCallback(paramLayer, paramProperty) {
             
-        },
-
-        updateQueryParamCallback(paramLayer, paramProperty) {
-
         }
     };
 
@@ -66,13 +72,6 @@ import checkDevice from './utils/check-device';
          * Init
          */
         this.init();
-
-        /**
-         * Controller
-         */
-        this.controller = {
-
-        }
     }
 
     /**
@@ -152,8 +151,7 @@ import checkDevice from './utils/check-device';
         afterMapLoaded(map) {
             this.initQueryParamListener();
             this.initFeatureClickEvent();
-            this.initLayerEvent();
-            this.initPropEvent();
+            this.initLayerAnchorClickEvent();
         }, // afterMapLoaded()
 
         /**
@@ -192,84 +190,10 @@ import checkDevice from './utils/check-device';
                     }
                 }, firstSymbolId);
 
-                /*------------------------------------*\
-                  Mouse events
-                \*------------------------------------*/
-                let lastFeature;
 
+                // check if touch device. if it's not a touch device, add mouse events
                 if (!checkDevice.isTouch()) {
-                    this.map.on('mouseenter', layer.id, (event) => {
-                        // turn mouse cursor into a pointer
-                        this.map.getCanvas().style.cursor = 'pointer';
-
-                    });
-
-                    this.map.on('mouseleave', layer.id, (event) => {
-                        this.map.getCanvas().style.cursor = '';
-
-                        lastFeature = undefined;
-                        $('.mapboxgl-choropleth-info-box').remove();
-                    });
-
-
-                    this.map.on('mousemove', layer.id, (event) => {
-                        let currentFeature = this.map.queryRenderedFeatures(event.point)[0];
-                        let $mapboxGLInfobox;
-                        let offsetInfobox;
-                        let mapboxGlInfoboxWidth;
-
-                        // Update the info box only if the hovered element changes
-                        if (currentFeature !== lastFeature) {
-                            // set the lastFeature to the current Feature
-                            lastFeature = currentFeature;
-
-                            // remove any previous info boxes
-                            if ($('.mapboxgl-choropleth-info-box').length) {
-                                $('.mapboxgl-choropleth-info-box').remove();
-                            }       
-
-                            // property info string for the info box
-                            let propString = '';
-
-                            // loop the currentFeature's property object
-                            for (let prop in currentFeature.properties) {
-                                if (prop !== 'name' && prop !== 'keys') {
-                                    propString += `
-                                        <div class="mapboxgl-choropleth-info-box__property">
-                                            <span class="mapboxgl-choropleth-info-box__property-key">${prop}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${numberWithCommas(currentFeature.properties[prop])}</span>
-                                        </div>
-                                    `;    
-                                }
-                            }                 
-
-                            // append the new info box to map
-                            $(this.options.mapConfig.mapSelector).append(`
-                                <div class="mapboxgl-choropleth-info-box">
-                                    <h3 class="mapboxgl-choropleth-info-box__title">${currentFeature.properties.name}</h3>
-                                    ${propString}
-                                </div>
-                            `)
-                        }
-
-                        $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
-                        mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
-
-                        // Reposition the info box if it spills over 
-                        if ( (event.originalEvent.clientX + mapboxGlInfoboxWidth ) > this.mapElement.getBoundingClientRect().right) {
-                            offsetInfobox = mapboxGlInfoboxWidth;
-                        } else {
-                            offsetInfobox = 0;
-                        }
-
-                        // Reposition the info box based on mouse cursor's position
-                        if ($mapboxGLInfobox.length) {
-                            $mapboxGLInfobox.css({
-                                top: `${event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32}px`,
-                                left: `${event.originalEvent.clientX - offsetInfobox}px`
-                            })
-                        }
-                    });
-
+                    this.initMouseEvents(layer);
                 } // checkDevice.isTouch()
 
 
@@ -278,6 +202,87 @@ import checkDevice from './utils/check-device';
             });
         }, // addMapLayers
 
+        /**
+         * Initialize mouse events
+         */
+        initMouseEvents(layer) {
+            // keep track of last feature
+            let lastFeature;
+
+            // mouse enter event
+            this.map.on('mouseenter', layer.id, (event) => {
+                // turn mouse cursor into a pointer
+                this.map.getCanvas().style.cursor = 'pointer';
+
+            });
+
+            // mouse leave event
+            this.map.on('mouseleave', layer.id, (event) => {
+                this.map.getCanvas().style.cursor = '';
+
+                lastFeature = undefined;
+                $('.mapboxgl-choropleth-info-box').remove();
+            });
+
+            // mouse move event
+            this.map.on('mousemove', layer.id, (event) => {
+                let currentFeature = this.map.queryRenderedFeatures(event.point)[0];
+                let $mapboxGLInfobox;
+                let offsetInfobox;
+                let mapboxGlInfoboxWidth;
+
+                // Update the info box only if the hovered element changes
+                if (currentFeature !== lastFeature) {
+                    // set the lastFeature to the current Feature
+                    lastFeature = currentFeature;
+
+                    // remove any previous info boxes
+                    if ($('.mapboxgl-choropleth-info-box').length) {
+                        $('.mapboxgl-choropleth-info-box').remove();
+                    }       
+
+                    // property info string for the info box
+                    let propString = '';
+
+                    // loop the currentFeature's property object
+                    for (let prop in currentFeature.properties) {
+                        if (prop !== 'name' && prop !== 'keys') {
+                            propString += `
+                                <div class="mapboxgl-choropleth-info-box__property">
+                                    <span class="mapboxgl-choropleth-info-box__property-key">${prop}</span>: <span class="mapboxgl-choropleth-info-box__property-value">${numberWithCommas(currentFeature.properties[prop])}</span>
+                                </div>
+                            `;    
+                        }
+                    }                 
+
+                    // append the new info box to map
+                    $(this.options.mapConfig.mapSelector).append(`
+                        <div class="mapboxgl-choropleth-info-box">
+                            <h3 class="mapboxgl-choropleth-info-box__title">${currentFeature.properties.name}</h3>
+                            ${propString}
+                        </div>
+                    `)
+                }
+
+                $mapboxGLInfobox = $('.mapboxgl-choropleth-info-box');
+                mapboxGlInfoboxWidth = parseInt($mapboxGLInfobox.outerWidth());
+
+                // Reposition the info box if it spills over 
+                if ( (event.originalEvent.clientX + mapboxGlInfoboxWidth ) > this.mapElement.getBoundingClientRect().right) {
+                    offsetInfobox = mapboxGlInfoboxWidth;
+                } else {
+                    offsetInfobox = 0;
+                }
+
+                // Reposition the info box based on mouse cursor's position
+                if ($mapboxGLInfobox.length) {
+                    $mapboxGLInfobox.css({
+                        top: `${event.originalEvent.clientY - parseInt($mapboxGLInfobox.height()) - 32}px`,
+                        left: `${event.originalEvent.clientX - offsetInfobox}px`
+                    })
+                }
+            });
+        },
 
         /**
          * Listen to query parameter changes
@@ -295,7 +300,7 @@ import checkDevice from './utils/check-device';
 
 
         /**
-         * Check query param
+         * Check query params 
          */
         checkQueryParam() {
             let paramLayer = getParameterByName('layer');
@@ -304,7 +309,6 @@ import checkDevice from './utils/check-device';
             if (paramLayer) {
                 if (paramProperty) {
                     this.updateLayer(paramLayer, paramProperty);
-                    this.options.updateQueryParamCallback(paramLayer, paramProperty);
                 } else {
                     this.updateLayer(paramLayer);
                 }
@@ -332,9 +336,6 @@ import checkDevice from './utils/check-device';
 
             // Update layer
             this.updateLayer(layer, property);
-
-            // Callback
-            this.options.updateQueryParamCallback(layer, property);
         }, // updateQueryParam()
 
 
@@ -428,23 +429,24 @@ import checkDevice from './utils/check-device';
         /**
          * Click event for layer reveals/hide
          */
-        initLayerEvent() {
-            $('body').on('click', '.js-choropleth-layer-anchor', this.layerEventHandler.bind(this))
-        }, // initLayerEvent
+        initLayerAnchorClickEvent() {
+            $('body').on('click', this.options.controlsConfig.layerAnchorSelector, this.layerAnchorClickEventHandler.bind(this))
+        }, // initLayerAnchorClickEvent
 
 
         /**
          * Handles the anchor event for showing/revealing layers
          */
-        layerEventHandler(event) {
+        layerAnchorClickEventHandler(event) {
             event.preventDefault();
             event.stopPropagation();
 
             // Get name of clicked layer from anchor
             let clickedLayer = $(event.currentTarget).attr('data-layer');
+            let clickedProp = $(event.currentTarget).attr('data-prop');
 
-            this.updateQueryParam(clickedLayer);
-        }, // layerEventHandler()
+            this.updateQueryParam(clickedLayer, clickedProp);
+        }, // layerAnchorClickEventHandler()
 
 
         /**
@@ -507,32 +509,10 @@ import checkDevice from './utils/check-device';
             // Update map legend
             this.addMapLegend();
 
-            // Update layer end
-            this.options.updateLayerEnd(this.activeLayer, propertyName);
+            // Run update layer callback
+            this.options.updateLayerCallback(this.activeLayer, propertyName);
         }, // updateLayer()
 
-
-
-        /**
-         * Init the event handler for layer properties
-         */
-        initPropEvent() {
-            $('body').on('click', '.js-choropleth-prop-anchor', this.propEventHandler.bind(this));
-        }, // initPropEvent()
-
-
-        /**
-         * Handles the event for layer properties (when users select a property to show on the map)
-         */
-        propEventHandler(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            let clickedLayer = $(event.currentTarget).attr('data-layer');
-            let clickedProp = $(event.currentTarget).attr('data-prop');
-
-            this.updateQueryParam(clickedLayer, clickedProp);
-        }, // propEventHandler
 
 
         /**
@@ -585,10 +565,6 @@ import checkDevice from './utils/check-device';
          * Add legends to the map
          */
         addMapLegend() {
-            // console.log('method: addMapLegend');
-            // console.log(this.activeLayerPropName);
-            // console.log(this.activeLayerPropProperties);
-
             if ($(`.${this.mapLegend}`).length) {
                 $(`.${this.mapLegend}`).remove();
             }
