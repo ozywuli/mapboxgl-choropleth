@@ -88,7 +88,7 @@ exports.default = config;
 
   unpack = function(args) {
     if (args.length >= 3) {
-      return [].slice.call(args);
+      return Array.prototype.slice.call(args);
     } else {
       return args[0];
     }
@@ -162,7 +162,7 @@ exports.default = config;
     root.chroma = chroma;
   }
 
-  chroma.version = '1.3.5';
+  chroma.version = '1.3.7';
 
   _input = {};
 
@@ -936,7 +936,7 @@ exports.default = config;
     dy = 0;
     for (i in xyz) {
       xyz[i] = xyz[i] || 0;
-      cnt.push(!isNaN(xyz[i]) ? 1 : 0);
+      cnt.push(isNaN(xyz[i]) ? 0 : 1);
       if (mode.charAt(i) === 'h' && !isNaN(xyz[i])) {
         A = xyz[i] / 180 * PI;
         dx += cos(A);
@@ -950,18 +950,18 @@ exports.default = config;
       alpha += c.alpha();
       for (i in xyz) {
         if (!isNaN(xyz2[i])) {
-          xyz[i] += xyz2[i];
           cnt[i] += 1;
           if (mode.charAt(i) === 'h') {
-            A = xyz[i] / 180 * PI;
+            A = xyz2[i] / 180 * PI;
             dx += cos(A);
             dy += sin(A);
+          } else {
+            xyz[i] += xyz2[i];
           }
         }
       }
     }
     for (i in xyz) {
-      xyz[i] = xyz[i] / cnt[i];
       if (mode.charAt(i) === 'h') {
         A = atan2(dy / cnt[i], dx / cnt[i]) / PI * 180;
         while (A < 0) {
@@ -971,6 +971,8 @@ exports.default = config;
           A -= 360;
         }
         xyz[i] = A;
+      } else {
+        xyz[i] = xyz[i] / cnt[i];
       }
     }
     return chroma(xyz, mode).alpha(alpha / l);
@@ -1673,18 +1675,20 @@ exports.default = config;
   _interpolators.push(['rgb', interpolate_rgb]);
 
   Color.prototype.luminance = function(lum, mode) {
-    var cur_lum, eps, max_iter, test;
+    var cur_lum, eps, max_iter, rgba, test;
     if (mode == null) {
       mode = 'rgb';
     }
     if (!arguments.length) {
       return rgb2luminance(this._rgb);
     }
+    rgba = this._rgb;
     if (lum === 0) {
-      this._rgb = [0, 0, 0, this._rgb[3]];
+      rgba = [0, 0, 0, this._rgb[3]];
     } else if (lum === 1) {
-      this._rgb = [255, 255, 255, this._rgb[3]];
+      rgba = [255, 255, 255, this[3]];
     } else {
+      cur_lum = rgb2luminance(this._rgb);
       eps = 1e-7;
       max_iter = 20;
       test = function(l, h) {
@@ -1699,10 +1703,13 @@ exports.default = config;
         }
         return test(m, h);
       };
-      cur_lum = rgb2luminance(this._rgb);
-      this._rgb = (cur_lum > lum ? test(chroma('black'), this) : test(this, chroma('white'))).rgba();
+      if (cur_lum > lum) {
+        rgba = test(chroma('black'), this).rgba();
+      } else {
+        rgba = test(this, chroma('white')).rgba();
+      }
     }
-    return this;
+    return chroma(rgba).alpha(this.alpha());
   };
 
   temperature2rgb = function(kelvin) {
@@ -2770,6 +2777,78 @@ exports.default = config;
 },{}],3:[function(require,module,exports){
 'use strict';
 
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = {
+    isIOS: function isIOS() {
+        return !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
+    },
+    isAndroid: function isAndroid() {},
+    isTouch: function isTouch() {
+        return 'ontouchstart' in window || navigator.MaxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+    }
+};
+},{}],4:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+exports.default = function (arr) {
+    var twoTimesSignedArea = 0;
+    var cxTimes6SignedArea = 0;
+    var cyTimes6SignedArea = 0;
+
+    var length = arr.length;
+
+    var x = function x(i) {
+        return arr[i % length][0];
+    };
+    var y = function y(i) {
+        return arr[i % length][1];
+    };
+
+    for (var i = 0; i < arr.length; i++) {
+        var twoSA = x(i) * y(i + 1) - x(i + 1) * y(i);
+        twoTimesSignedArea += twoSA;
+        cxTimes6SignedArea += (x(i) + x(i + 1)) * twoSA;
+        cyTimes6SignedArea += (y(i) + y(i + 1)) * twoSA;
+    }
+    var sixSignedArea = 3 * twoTimesSignedArea;
+    return [cxTimes6SignedArea / sixSignedArea, cyTimes6SignedArea / sixSignedArea];
+};
+},{}],5:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+exports.default = getParameterByName;
+},{}],6:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+exports.default = function (number) {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
+},{}],7:[function(require,module,exports){
+'use strict';
+
 var _config = require('../config');
 
 var _config2 = _interopRequireDefault(_config);
@@ -2797,6 +2876,8 @@ var _checkDevice2 = _interopRequireDefault(_checkDevice);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // import {$, jQuery} from 'jquery';
+console.log('works');
+
 ;(function ($, window, document, undefined) {
     /**
      * Plugin namespace
@@ -2961,6 +3042,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
                 }
             }
             this.options.mapConfig.layers.forEach(function (layer, index) {
+
                 // Add map source
                 _this2.map.addSource(layer.source.id, {
                     type: layer.source.type,
@@ -3172,12 +3254,12 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
             // Add click event to each custom layer
             this.customLayers.forEach(function (layer) {
-                if (_checkDevice2.default.isIOS()) {
-                    _this5.map.on('touchstart', layer, _this5.featureTouchStartHandler.bind(_this5));
-                    _this5.map.on('touchend', layer, _this5.featureTouchEndHandler.bind(_this5));
-                } else {
-                    _this5.map.on('click', layer, _this5.featureClickEventHandler.bind(_this5));
-                }
+                // if (checkDevice.isIOS()) {
+                //     this.map.on('touchstart', layer, this.featureTouchStartHandler.bind(this));
+                //     this.map.on('touchend', layer, this.featureTouchEndHandler.bind(this));
+                // } else {
+                _this5.map.on('click', layer, _this5.featureClickEventHandler.bind(_this5));
+                // }
             });
         },
         // initFeatureClickEvent
@@ -3196,6 +3278,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          */
         featureTouchStartHandler: function featureTouchStartHandler(event) {
             this.touchTime = new Date();
+            console.log('touch start');
         },
 
 
@@ -3204,7 +3287,12 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
          */
         featureTouchEndHandler: function featureTouchEndHandler(event) {
             var diff = new Date() - this.touchTime;
-            if (diff < 100) {
+            console.log('touch end initialized');
+            console.log(diff);
+
+            if (diff < 150) {
+                console.log('touch end condition');
+
                 this.activeFeature = event;
                 this.options.featureClickEventCallback(event);
             }
@@ -3426,77 +3514,5 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
     module.exports = namespace['pluginName'];
 })(jQuery, window, document);
 
-},{"../config":1,"chroma-js":2,"woohaus-utility-belt/lib/checkDevice":4,"woohaus-utility-belt/lib/getCentroid":5,"woohaus-utility-belt/lib/getParameterByName":6,"woohaus-utility-belt/lib/numberWithCommas":7}],4:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-exports.default = {
-    isIOS: function isIOS() {
-        return !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
-    },
-    isAndroid: function isAndroid() {},
-    isTouch: function isTouch() {
-        return 'ontouchstart' in window || navigator.MaxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
-    }
-};
-},{}],5:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-exports.default = function (arr) {
-    var twoTimesSignedArea = 0;
-    var cxTimes6SignedArea = 0;
-    var cyTimes6SignedArea = 0;
-
-    var length = arr.length;
-
-    var x = function x(i) {
-        return arr[i % length][0];
-    };
-    var y = function y(i) {
-        return arr[i % length][1];
-    };
-
-    for (var i = 0; i < arr.length; i++) {
-        var twoSA = x(i) * y(i + 1) - x(i + 1) * y(i);
-        twoTimesSignedArea += twoSA;
-        cxTimes6SignedArea += (x(i) + x(i + 1)) * twoSA;
-        cyTimes6SignedArea += (y(i) + y(i + 1)) * twoSA;
-    }
-    var sixSignedArea = 3 * twoTimesSignedArea;
-    return [cxTimes6SignedArea / sixSignedArea, cyTimes6SignedArea / sixSignedArea];
-};
-},{}],6:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-function getParameterByName(name, url) {
-    if (!url) url = window.location.href;
-    name = name.replace(/[\[\]]/g, "\\$&");
-    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-        results = regex.exec(url);
-    if (!results) return null;
-    if (!results[2]) return '';
-    return decodeURIComponent(results[2].replace(/\+/g, " "));
-}
-
-exports.default = getParameterByName;
-},{}],7:[function(require,module,exports){
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-exports.default = function (number) {
-    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-};
-},{}]},{},[3])(3)
+},{"../config":1,"chroma-js":2,"woohaus-utility-belt/lib/checkDevice":3,"woohaus-utility-belt/lib/getCentroid":4,"woohaus-utility-belt/lib/getParameterByName":5,"woohaus-utility-belt/lib/numberWithCommas":6}]},{},[7])(7)
 });

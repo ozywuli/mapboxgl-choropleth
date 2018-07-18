@@ -6,6 +6,9 @@ import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
 import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
 import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
 
+console.log('works');
+
+
 ;(function( $, window, document, undefined ) {
     /**
      * Plugin namespace
@@ -169,11 +172,13 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
                 }
             }
             this.options.mapConfig.layers.forEach((layer, index) => {
+
                 // Add map source
                 this.map.addSource(layer.source.id, {
                     type: layer.source.type,
                     data: layer.source.data
                 });
+                
 
                 // Add layers to map
                 this.map.addLayer({
@@ -383,12 +388,12 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
         initFeatureClickEvent() {
             // Add click event to each custom layer
             this.customLayers.forEach((layer) => {
-                if (checkDevice.isIOS()) {
-                    this.map.on('touchstart', layer, this.featureTouchStartHandler.bind(this));
-                    this.map.on('touchend', layer, this.featureTouchEndHandler.bind(this));
-                } else {
+                // if (checkDevice.isIOS()) {
+                //     this.map.on('touchstart', layer, this.featureTouchStartHandler.bind(this));
+                //     this.map.on('touchend', layer, this.featureTouchEndHandler.bind(this));
+                // } else {
                     this.map.on('click', layer, this.featureClickEventHandler.bind(this));
-                }
+                // }
             });
         }, // initFeatureClickEvent
 
@@ -405,6 +410,8 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
          */
         featureTouchStartHandler(event) {
             this.touchTime = new Date();
+            console.log('touch start');
+            
         },
 
         /**
@@ -412,7 +419,12 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
          */
         featureTouchEndHandler(event) {
             let diff = new Date() - this.touchTime;
-            if (diff < 100) {
+            console.log('touch end initialized');
+            console.log(diff);            
+            
+            if (diff < 150) {
+                console.log('touch end condition');
+                
                 this.activeFeature = event;
                 this.options.featureClickEventCallback(event);
             }
@@ -497,7 +509,11 @@ import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
             } else {
                 this.findLayer(this.activeLayer).properties.map((property) => {
                     if (property.key === propertyName) {
-                        this.map.setPaintProperty(this.activeLayer, 'fill-color', this.paintFill(property));
+                        this.map.setPaintProperty(
+                            this.activeLayer, 
+                            'fill-color', 
+                            this.paintFill(property)
+                        );
                         this.setActiveProperty(propertyName);
                     }
                 });
