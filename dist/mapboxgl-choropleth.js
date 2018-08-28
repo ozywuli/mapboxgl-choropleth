@@ -1,16 +1,4 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Choropleth = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-var config = {
-    mapboxAccessToken: 'pk.eyJ1IjoiYW9zaWthIiwiYSI6IjQzRGIxeEkifQ.7OvmyBbXwwt9Qxjlh9Qd3w'
-};
-
-exports.default = config;
-
-},{}],2:[function(require,module,exports){
 
 /**
  * @license
@@ -2774,7 +2762,7 @@ exports.default = config;
 
 }).call(this);
 
-},{}],3:[function(require,module,exports){
+},{}],2:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -2789,7 +2777,7 @@ exports.default = {
         return 'ontouchstart' in window || navigator.MaxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
     }
 };
-},{}],4:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2819,7 +2807,7 @@ exports.default = function (arr) {
     var sixSignedArea = 3 * twoTimesSignedArea;
     return [cxTimes6SignedArea / sixSignedArea, cyTimes6SignedArea / sixSignedArea];
 };
-},{}],5:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2836,7 +2824,7 @@ function getParameterByName(name, url) {
 }
 
 exports.default = getParameterByName;
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2846,12 +2834,8 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = function (number) {
     return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 };
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 'use strict';
-
-var _config = require('../config');
-
-var _config2 = _interopRequireDefault(_config);
 
 var _chromaJs = require('chroma-js');
 
@@ -2875,10 +2859,8 @@ var _checkDevice2 = _interopRequireDefault(_checkDevice);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// import {$, jQuery} from 'jquery';
-console.log('works');
-
-;(function ($, window, document, undefined) {
+; // import {$, jQuery} from 'jquery';
+(function ($, window, document, undefined) {
     /**
      * Plugin namespace
      */
@@ -2983,7 +2965,7 @@ console.log('works');
             // Map instance
             var map = void 0;
             // Mapbox access token
-            mapboxgl.accessToken = _config2.default.mapboxAccessToken;
+            mapboxgl.accessToken = this.options.mapboxToken;
             // Instantiate mapbox
             map = new mapboxgl.Map(this.options.mapboxConfig);
 
@@ -3514,5 +3496,5 @@ console.log('works');
     module.exports = namespace['pluginName'];
 })(jQuery, window, document);
 
-},{"../config":1,"chroma-js":2,"woohaus-utility-belt/lib/checkDevice":3,"woohaus-utility-belt/lib/getCentroid":4,"woohaus-utility-belt/lib/getParameterByName":5,"woohaus-utility-belt/lib/numberWithCommas":6}]},{},[7])(7)
+},{"chroma-js":1,"woohaus-utility-belt/lib/checkDevice":2,"woohaus-utility-belt/lib/getCentroid":3,"woohaus-utility-belt/lib/getParameterByName":4,"woohaus-utility-belt/lib/numberWithCommas":5}]},{},[6])(6)
 });
