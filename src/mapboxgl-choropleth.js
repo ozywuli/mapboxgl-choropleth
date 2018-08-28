@@ -1,13 +1,9 @@
 // import {$, jQuery} from 'jquery';
-import config from '../config';
 import chroma from 'chroma-js';
 import getParameterByName from 'woohaus-utility-belt/lib/getParameterByName';
 import getCentroid from 'woohaus-utility-belt/lib/getCentroid';
 import numberWithCommas from 'woohaus-utility-belt/lib/numberWithCommas';
 import checkDevice from 'woohaus-utility-belt/lib/checkDevice';
-
-console.log('works');
-
 
 ;(function( $, window, document, undefined ) {
     /**
@@ -118,7 +114,7 @@ console.log('works');
             // Map instance
             let map;
             // Mapbox access token
-            mapboxgl.accessToken = config.mapboxAccessToken;
+            mapboxgl.accessToken = this.options.mapboxToken;
             // Instantiate mapbox
             map = new mapboxgl.Map(this.options.mapboxConfig);
 
